@@ -171,6 +171,10 @@ function tomorrowStr(){
   d.setDate(d.getDate()+1);
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+function fmtWeight(w){
+  return (w === null || w === undefined || w === '') ? null : Number(w).toFixed(2);
+}
+
 function dateToStr(d){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
@@ -179,9 +183,18 @@ async function handleExcelFile(file){
   try{
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const sheetName = wb.SheetNames.includes('배차') ? '배차' : wb.SheetNames[0];
+    const sheetName = wb.SheetNames.find(n => n.trim() === '배차') || wb.SheetNames[0];
     const ws = wb.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    if(ws['!rows']){
+      ws['!rows'].forEach((rowMeta, idx) => {
+        if(rowMeta && rowMeta.hidden && rows[idx]){
+          rows[idx] = [];
+        }
+      });
+    }
+
     const parsed = parseDispatchSheet(rows);
 
     if(!parsed.farms.length){
@@ -200,6 +213,19 @@ async function handleExcelFile(file){
   }
 }
 
+const KNOWN_TAG_WORDS = new Set(['G마크', '무항생제', '일반', '동물복지', '삼계', '육계']);
+
+function findReconnectTarget(str, knownNames){
+  if(!str) return null;
+  const s = String(str).trim();
+  const m = s.match(/^(.+?)\s*연결\s*작업?/);
+  if(!m) return null;
+  const candidate = m[1].trim();
+  if(!candidate) return null;
+  if(knownNames.includes(candidate)) return candidate;
+  return knownNames.find(n => candidate.includes(n) || n.includes(candidate)) || null;
+}
+
 function parseDispatchSheet(rows){
   const cell = (r, c) => (rows[r] && rows[r][c] !== undefined) ? rows[r][c] : null;
 
@@ -216,65 +242,71 @@ function parseDispatchSheet(rows){
     }
   }
 
-  const farms = [];
+  const farmsByName = {};
+  const farmOrder = [];
+  let current = null;
+
   let i = dataStart;
   const n = rows.length;
 
   while(i < n){
     const name = cell(i, 2);
     const region = cell(i, 4);
-    if(name && region){
-      let j = i + 1;
-      while(j < n){
-        const nName = cell(j, 2);
-        const nRegion = cell(j, 4);
-        if(nName && nRegion) break;
-        j++;
-      }
+    const count = cell(i, 6);
+    const weight = cell(i, 8);
+    const nameStr = name ? String(name).trim() : '';
 
-      const avgWeightRaw = cell(i, 8);
-      const lineRaw = cell(i + 1, 1);
-      const premiumRaw = cell(i + 1, 2);
-      const extraTag = cell(i + 2, 2);
+    const isHeader = !!nameStr && !KNOWN_TAG_WORDS.has(nameStr) &&
+      (region !== null || count !== null || weight !== null);
 
+    if(isHeader){
+      const tagCandidates = [cell(i + 1, 2), cell(i + 2, 2)];
       let premium = '일반';
-      if(premiumRaw === 'G마크' || premiumRaw === '무항생제' || premiumRaw === '일반') premium = premiumRaw;
-
       let animalWelfare = false;
       let chickenType = '육계';
-      if(extraTag){
-        const tagStr = String(extraTag);
-        if(tagStr.includes('동물복지')) animalWelfare = true;
-        if(tagStr.includes('삼계')) chickenType = '삼계';
-        if(tagStr.includes('육계')) chickenType = '육계';
-      }
+      tagCandidates.forEach(t => {
+        if(!t) return;
+        const s = String(t);
+        if(s.includes('G마크')) premium = 'G마크';
+        if(s.includes('무항생제')) premium = '무항생제';
+        if(s.includes('동물복지')) animalWelfare = true;
+        if(s.includes('삼계')) chickenType = '삼계';
+        if(s.includes('육계')) chickenType = '육계';
+      });
+      const lineRaw = cell(i + 1, 1);
 
-      const vehicles = [];
-      for(let r = i; r < j; r++){
-        const code = cell(r, 9);
-        const num = cell(r, 10);
-        if(code && num !== null && num !== '' && num !== undefined){
-          vehicles.push({ code: String(code).trim(), number: String(num).trim() });
-        }
-      }
-
-      farms.push({
-        name: String(name).trim(),
+      const farm = {
+        name: nameStr,
         line: (lineRaw === '1라인' || lineRaw === '2라인') ? lineRaw : '2라인',
         premium,
         animalWelfare,
         chickenType,
-        avgWeight: (avgWeightRaw !== null && avgWeightRaw !== undefined && avgWeightRaw !== '') ? parseFloat(avgWeightRaw) : null,
-        vehicles
-      });
-
-      i = j;
+        avgWeight: (weight !== null && weight !== undefined && weight !== '') ? parseFloat(weight) : null,
+        targetCount: (count !== null && count !== undefined && count !== '') ? parseInt(count, 10) : null,
+        vehicles: []
+      };
+      farmsByName[nameStr] = farm;
+      farmOrder.push(farm);
+      current = farm;
     } else {
-      i++;
+      for(let c = 1; c <= 8; c++){
+        const target = findReconnectTarget(cell(i, c), Object.keys(farmsByName));
+        if(target){ current = farmsByName[target]; break; }
+      }
     }
+
+    if(current){
+      const code = cell(i, 9);
+      const num = cell(i, 10);
+      if(code && num !== null && num !== '' && num !== undefined){
+        current.vehicles.push({ code: String(code).trim(), number: String(num).trim() });
+      }
+    }
+
+    i++;
   }
 
-  return { detectedDate, farms };
+  return { detectedDate, farms: farmOrder };
 }
 function formatDateKorean(dateStr){
   const parts = dateStr.split('-').map(Number);
@@ -489,7 +521,7 @@ function renderLineColumn(line){
         ${vehicleBlock(e)}
       </div>
       <div class="farm-col">
-        <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : esc(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
+        <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : fmtWeight(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
       </div>
     </div>
   `).join('');
@@ -549,7 +581,7 @@ function renderInspectorColumn(line){
         ${vehicleBlock(e)}
       </div>
       <div class="farm-col">
-        <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : esc(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
+        <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : fmtWeight(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
       </div>
       ${orderBadge(e)}
     </div>
@@ -642,7 +674,7 @@ function viewEntryForm(){
         </select>
         ${ne.farmId ? (() => {
           const f = state.farms.find(x => x.id === ne.farmId);
-          return f ? `<div class="readonly-box" style="margin-top:8px;">프리미엄: <strong>${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)}</strong>${f.chickenType ? ' · <strong>' + esc(f.chickenType) + '</strong>' : ''}${(f.avgWeight !== undefined && f.avgWeight !== null) ? ' · <strong>' + esc(f.avgWeight) + 'kg</strong>' : ''} (자동)</div>` : '';
+          return f ? `<div class="readonly-box" style="margin-top:8px;">프리미엄: <strong>${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)}</strong>${f.chickenType ? ' · <strong>' + esc(f.chickenType) + '</strong>' : ''}${(f.avgWeight !== undefined && f.avgWeight !== null) ? ' · <strong>' + fmtWeight(f.avgWeight) + 'kg</strong>' : ''} (자동)</div>` : '';
         })() : ''}
       ` : `
         <div class="stack">
@@ -700,7 +732,7 @@ function viewConfirmInject(){
     </div>
     <div class="card" style="padding:16px;margin-bottom:18px;">
       <p style="font-weight:600;font-size:15px;">${esc(e.vehicleCode)} · ${esc(e.vehicleNumber)}</p>
-      <p class="sub" style="margin-top:4px;">${esc(e.farmName)}${e.premium ? ' · ' + premiumSpan(e.premium, e.animalWelfare) : ''}${e.weight !== null ? ' · ' + esc(e.weight) + 'kg' : ' · 중량 입력대기'}</p>
+      <p class="sub" style="margin-top:4px;">${esc(e.farmName)}${e.premium ? ' · ' + premiumSpan(e.premium, e.animalWelfare) : ''}${e.weight !== null ? ' · ' + fmtWeight(e.weight) + 'kg' : ' · 중량 입력대기'}</p>
     </div>
 
     <div class="field">
@@ -756,7 +788,7 @@ function adminFarmsPanel(){
     <div class="entry-row">
       <div class="entry-main">
         <div class="v">${esc(f.name)}</div>
-        <div class="f">${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)}${f.chickenType ? ' · ' + esc(f.chickenType) : ''}${(f.avgWeight !== undefined && f.avgWeight !== null) ? ' · ' + esc(f.avgWeight) + 'kg' : ''}</div>
+        <div class="f">${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)}${f.chickenType ? ' · ' + esc(f.chickenType) : ''}${(f.avgWeight !== undefined && f.avgWeight !== null) ? ' · ' + fmtWeight(f.avgWeight) + 'kg' : ''}</div>
       </div>
       <button class="btn-ghost btn-danger" data-action="farm-delete" data-id="${f.id}">삭제</button>
     </div>
@@ -852,14 +884,18 @@ function adminExcelPanel(){
 
 function renderExcelPreview(imp){
   const totalVehicles = imp.farms.reduce((s, f) => s + f.vehicles.length, 0);
-  const farmRows = imp.farms.map(f => h`
+  const mismatches = imp.farms.filter(f => f.targetCount !== null && f.targetCount !== f.vehicles.length);
+  const farmRows = imp.farms.map(f => {
+    const mismatch = f.targetCount !== null && f.targetCount !== f.vehicles.length;
+    return h`
     <div class="entry-row">
       <div class="entry-main">
         <div class="v">${esc(f.name)} <span class="sub">(${esc(f.line)})</span></div>
-        <div class="f">${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)} · ${esc(f.chickenType)} · ${f.avgWeight !== null ? esc(f.avgWeight) + 'kg' : '평체 미확인'} · 차량 ${f.vehicles.length}대</div>
+        <div class="f">${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)} · ${esc(f.chickenType)} · ${f.avgWeight !== null ? fmtWeight(f.avgWeight) + 'kg' : '평체 미확인'} · 차량 ${f.vehicles.length}대${mismatch ? ` <span style="color:var(--danger);font-weight:700;">(신고 ${f.targetCount}대와 다름)</span>` : ''}</div>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 
   return h`
     <div class="card" style="padding:16px;margin-bottom:16px;">
@@ -870,6 +906,7 @@ function renderExcelPreview(imp){
     <div class="card" style="padding:16px;margin-bottom:16px;">
       <p style="font-weight:700;font-size:15px;">농가 ${imp.farms.length}곳 · 차량 ${totalVehicles}대 인식됨</p>
       <p class="sub" style="margin-top:4px;">등록되는 차량은 전부 "가입력" 상태로 들어가고, 실제 도착 시 작업자가 순서를 지정하면 됩니다.</p>
+      ${mismatches.length ? `<p class="error" style="margin-top:8px;">⚠ ${mismatches.length}개 농가에서 신고된 차량대수와 인식된 대수가 달라요. 아래 목록에서 빨간 표시를 확인해주세요.</p>` : ''}
     </div>
     <span class="label">인식된 농가 목록</span>
     <div class="card" style="margin-bottom:16px;">
