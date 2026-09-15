@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>생계차량 입고 관리</title>
+<style>
+  :root{
+    --bg:#F5F3EE;
+    --card:#FFFFFF;
+    --border:#E3DED0;
+    --text:#26221A;
+    --text-sub:#726B5C;
+    --amber:#E8A33D;
+    --amber-dark:#7A4A05;
+    --amber-bg:#FCF1DC;
+    --blue:#3D7FB5;
+    --blue-dark:#12385A;
+    --blue-bg:#E7F0F7;
+    --green:#3F8F5F;
+    --green-bg:#E5F3EA;
+    --wait:#B3591C;
+    --wait-bg:#FCEEE2;
+    --danger:#C0392B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;color:var(--text);}
+  #frame{max-width:430px;margin:0 auto;min-height:100vh;background:var(--bg);display:flex;flex-direction:column;border-left:1px solid var(--border);border-right:1px solid var(--border);}
+  #app{flex:1;padding:16px 16px 32px;}
+  h1{font-size:19px;font-weight:600;margin:0 0 4px;}
+  h2{font-size:16px;font-weight:600;margin:0 0 10px;}
+  p{margin:0;}
+  .sub{color:var(--text-sub);font-size:13px;}
+  button{font-family:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  input,select{font-family:inherit;font-size:16px;}
+  .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:52px;border-radius:12px;border:1px solid var(--border);background:var(--card);font-size:16px;font-weight:600;color:var(--text);}
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--text);color:#fff;border:none;}
+  .btn-ghost{background:transparent;border:none;color:var(--text-sub);font-size:14px;min-height:auto;font-weight:500;}
+  .btn-box{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:0 9px;font-size:12px;font-weight:600;color:var(--text);min-height:32px;}
+  .btn-danger{color:var(--danger);border-color:#EAD3CE;}
+  .btn-line{padding:14px;border-radius:12px;border:2px solid var(--border);background:var(--card);text-align:left;}
+  .btn-line.active-2{border-color:var(--amber);background:var(--amber-bg);}
+  .btn-line.active-1{border-color:var(--blue);background:var(--blue-bg);}
+  .row{display:flex;gap:10px;}
+  .col{flex:1;min-width:0;}
+  .field{margin-bottom:16px;}
+  .label{font-size:13px;color:var(--text-sub);margin-bottom:6px;display:block;font-weight:500;}
+  .input{width:100%;min-height:48px;border-radius:10px;border:1px solid var(--border);padding:0 14px;background:var(--card);color:var(--text);}
+  .input:focus{outline:2px solid var(--text);outline-offset:-1px;}
+  .error{color:var(--danger);font-size:13px;margin-top:6px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:14px;}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;}
+  .tab{flex:1;text-align:center;padding:12px 0;border-radius:10px;border:1px solid var(--border);background:var(--card);font-weight:600;font-size:14px;color:var(--text-sub);}
+  .tab.sel-2{background:var(--amber);color:#fff;border-color:var(--amber);}
+  .tab.sel-1{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .entry-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--border);}
+  .entry-row:first-child{border-top:none;}
+  .seq{width:24px;flex-shrink:0;color:var(--text-sub);font-size:13px;text-align:center;}
+  .entry-main{flex:1;min-width:0;}
+  .entry-main .v{font-weight:600;font-size:14px;}
+  .entry-main .f{color:var(--text-sub);font-size:13px;margin-top:2px;}
+  .badge{flex-shrink:0;font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;}
+  .badge-done{background:var(--green-bg);color:var(--green);}
+  .badge-wait{background:var(--wait-bg);color:var(--wait);}
+  .badge-pre{background:#EAE6F5;color:#5B3FA6;}
+  .empty{padding:28px 14px;text-align:center;color:var(--text-sub);font-size:14px;}
+  .chip-list{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);font-size:14px;font-weight:500;}
+  .chip.selected{border-color:var(--text);background:var(--text);color:#fff;}
+  .chip-del{margin-left:6px;color:var(--danger);}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;row-gap:8px;}
+  .role-pill{font-size:12px;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--border);color:var(--text-sub);}
+  .header-block{margin-bottom:18px;}
+  .divider{height:1px;background:var(--border);margin:18px 0;}
+  .backbar{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+  .backbtn{font-size:20px;background:none;border:none;padding:4px;color:var(--text);}
+  .readonly-box{padding:12px 14px;border-radius:10px;background:var(--bg);border:1px dashed var(--border);font-size:14px;color:var(--text-sub);}
+  .fixed-note{font-size:12px;color:var(--text-sub);margin-top:4px;}
+  .stack{display:flex;flex-direction:column;gap:10px;}
+  .wm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;}
+  .wm-col{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);}
+  .wm-col-header{display:flex;align-items:center;justify-content:space-between;padding:10px 10px;font-weight:600;font-size:12.5px;color:#fff;}
+  .wm-col-header.amber{background:var(--amber);}
+  .wm-col-header.blue{background:var(--blue);}
+  .wm-col-title{font-size:17px;font-weight:800;}
+  .wm-add-btn{border-radius:8px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;font-weight:700;padding:6px 10px;white-space:nowrap;}
+  .wm-col-body{min-height:40px;}
+  .entry-row-mini{display:flex;align-items:center;gap:6px;padding:9px 8px;border-top:1px solid var(--border);}
+  .entry-row-mini:first-child{border-top:none;}
+  .entry-row-mini .entry-main{flex:1;min-width:0;}
+  .v-block{display:flex;flex-direction:row;align-items:baseline;gap:2px;line-height:1.2;}
+  .v-code{font-weight:800;font-size:15px;}
+  .v-num{font-weight:600;font-size:13px;color:var(--text-sub);}
+  .farm-col{flex-shrink:0;text-align:right;}
+  .farm-inline{font-size:14px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;}
+  .entry-row-mini .f{font-size:12.5px;font-weight:600;color:var(--text);margin-top:3px;text-align:right;}
+  .entry-row-mini .badge{flex-shrink:0;font-size:14px;font-weight:700;padding:5px 8px;border-radius:8px;min-width:22px;text-align:center;}
+  .row-inspected{background:var(--green-bg);}
+  .insp-checkbox{width:20px;height:20px;flex-shrink:0;accent-color:var(--green);}
+  .insp-done{width:20px;height:20px;flex-shrink:0;border-radius:6px;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;}
+</style>
+</head>
+<body>
+<div id="frame"><div id="app"></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const ROLE_CODES = {
+  worker: '1111',
+  inspector: '2222',
+  admin: '1234'
+};
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC7Nqh-xfwtsn72e9XWiahV0-6FH4jjBLs",
+  authDomain: "hgcm-product.firebaseapp.com",
+  databaseURL: "https://hgcm-product-default-rtdb.firebaseio.com",
+  projectId: "hgcm-product",
+  storageBucket: "hgcm-product.firebasestorage.app",
+  messagingSenderId: "41646676068",
+  appId: "1:41646676068:web:b69ffeed8c8268c4ca6771"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const SEED_VEHICLES = {
+  '6916': 'H-1', '6536': 'H-2', '1733': 'H-3', '4371': 'H-5', '4453': 'H-6',
+  '4585': 'H-7', '3549': 'H-8', '1048': 'H-9', '5288': 'H-10', '8494': 'H-11',
+  '5239': 'H-12', '2886': 'H-13', '2348': 'S-1', '2111': 'S-2', '8054': 'S-3',
+  '3950': 'S-5', '9629': 'S-6', '1830': 'S-7', '2327': 'S-9', '1918': 'S-10',
+  '3219': 'S-11', '3884': 'S-12', '3140': 'S-13', '2674': 'S-15', '6081': 'H-15',
+  '1008': 'S-16', '6673': 'S-17', '4233': 'H-17', '3478': 'H-16', '7263': 'S-18',
+  '5485': 'H-18', '8087': 'H-19', '2077': 'S-19', '1088': 'S-20', '3127': 'S-8',
+  '1199': 'S-21', '6462': 'H-20', '7847': 'H-21', '9744': 'H-22'
+};
+
+const state = {
+  role: null,
+  view: 'login',
+  date: todayStr(),
+  line: '2라인',
+  vehicles: {},
+  entries: [],
+  farms: [],
+  loginError: '',
+  loginRole: null,
+  newEntry: null,
+  confirmEntryId: null,
+  confirmValue: '',
+  adminTab: 'farms',
+  excelImport: null,
+  farmDate: todayStr(),
+  farmDraft: { name: '', premium: 'G마크', chickenType: '육계', animalWelfare: false, avgWeight: '' },
+  vehicleDraft: { number: '', code: '' },
+  formErrors: {},
+  lastSynced: null,
+  closed: false,
+  workerLineTab: '1라인',
+  inspectorLineTab: '1라인'
+};
+
+function todayStr(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function tomorrowStr(){
+  const d = new Date();
+  d.setDate(d.getDate()+1);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function dateToStr(d){
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+async function handleExcelFile(file){
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    const sheetName = wb.SheetNames.includes('배차') ? '배차' : wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+    const parsed = parseDispatchSheet(rows);
+
+    if(!parsed.farms.length){
+      alert('농가 정보를 인식하지 못했습니다. 파일 형식을 확인해주세요.');
+      return;
+    }
+
+    state.excelImport = {
+      date: parsed.detectedDate ? dateToStr(parsed.detectedDate) : state.farmDate,
+      farms: parsed.farms
+    };
+    render();
+  }catch(e){
+    console.error('excel read error', e);
+    alert('엑셀 파일을 읽는 중 문제가 발생했습니다. .xlsx 파일인지 확인해주세요.');
+  }
+}
+
+function parseDispatchSheet(rows){
+  const cell = (r, c) => (rows[r] && rows[r][c] !== undefined) ? rows[r][c] : null;
+
+  let headerIdx = rows.findIndex(r => r && r[0] === 'No');
+  if(headerIdx === -1) headerIdx = 2;
+  const dataStart = headerIdx + 1;
+
+  let detectedDate = null;
+  for(let i = 0; i < headerIdx && !detectedDate; i++){
+    const row = rows[i];
+    if(!row) continue;
+    for(const c of row){
+      if(c instanceof Date){ detectedDate = c; break; }
+    }
+  }
+
+  const farms = [];
+  let i = dataStart;
+  const n = rows.length;
+
+  while(i < n){
+    const name = cell(i, 2);
+    const region = cell(i, 4);
+    if(name && region){
+      let j = i + 1;
+      while(j < n){
+        const nName = cell(j, 2);
+        const nRegion = cell(j, 4);
+        if(nName && nRegion) break;
+        j++;
+      }
+
+      const avgWeightRaw = cell(i, 8);
+      const lineRaw = cell(i + 1, 1);
+      const premiumRaw = cell(i + 1, 2);
+      const extraTag = cell(i + 2, 2);
+
+      let premium = '일반';
+      if(premiumRaw === 'G마크' || premiumRaw === '무항생제' || premiumRaw === '일반') premium = premiumRaw;
+
+      let animalWelfare = false;
+      let chickenType = '육계';
+      if(extraTag){
+        const tagStr = String(extraTag);
+        if(tagStr.includes('동물복지')) animalWelfare = true;
+        if(tagStr.includes('삼계')) chickenType = '삼계';
+        if(tagStr.includes('육계')) chickenType = '육계';
+      }
+
+      const vehicles = [];
+      for(let r = i; r < j; r++){
+        const code = cell(r, 9);
+        const num = cell(r, 10);
+        if(code && num !== null && num !== '' && num !== undefined){
+          vehicles.push({ code: String(code).trim(), number: String(num).trim() });
+        }
+      }
+
+      farms.push({
+        name: String(name).trim(),
+        line: (lineRaw === '1라인' || lineRaw === '2라인') ? lineRaw : '2라인',
+        premium,
+        animalWelfare,
+        chickenType,
+        avgWeight: (avgWeightRaw !== null && avgWeightRaw !== undefined && avgWeightRaw !== '') ? parseFloat(avgWeightRaw) : null,
+        vehicles
+      });
+
+      i = j;
+    } else {
+      i++;
+    }
+  }
+
+  return { detectedDate, farms };
+}
+function formatDateKorean(dateStr){
+  const parts = dateStr.split('-').map(Number);
+  return `${parts[1]}월 ${parts[2]}일`;
+}
+
+function uid(){
+  return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+}
+function formatTime(d){
+  return d ? d.toLocaleTimeString('ko-KR', { hour12: false }) : '';
+}
+function syncIndicator(){
+  return `<span class="sub sync-time" style="font-size:11px;">${state.lastSynced ? '● 실시간 동기화 · ' + formatTime(state.lastSynced) : ''}</span>`;
+}
+
+async function storageGet(key, shared, fallback){
+  try{
+    const path = key.replace(':', '/');
+    const snap = await db.ref(path).once('value');
+    const val = snap.val();
+    return (val === null || val === undefined) ? fallback : val;
+  }catch(e){
+    console.error('firebase get error', key, e);
+    return fallback;
+  }
+}
+async function storageSet(key, value, shared){
+  try{
+    const path = key.replace(':', '/');
+    await db.ref(path).set(value);
+    return true;
+  }catch(e){
+    console.error('firebase set error', key, e);
+    return false;
+  }
+}
+
+async function loadVehicles(){
+  const stored = await storageGet('vehicles', true, null);
+  if(stored && Object.keys(stored).length){
+    state.vehicles = stored;
+  } else {
+    state.vehicles = { ...SEED_VEHICLES };
+    await saveVehicles();
+  }
+}
+async function saveVehicles(){
+  await storageSet('vehicles', state.vehicles, true);
+}
+async function loadFarms(date){
+  state.farms = await storageGet('farms:' + date, true, []);
+}
+async function saveFarms(date, farms){
+  return await storageSet('farms:' + date, farms, true);
+}
+function normalizeEntry(e){
+  return {
+    ...e,
+    injectOrder: (e.injectOrder === undefined) ? null : e.injectOrder,
+    weight: (e.weight === undefined) ? null : e.weight,
+    waitState: e.waitState || '바닥',
+    inspected: !!e.inspected,
+    animalWelfare: !!e.animalWelfare
+  };
+}
+
+async function loadEntries(date){
+  const raw = await storageGet('entries:' + date, true, []);
+  state.entries = (raw || []).map(normalizeEntry);
+}
+async function saveEntries(date, entries){
+  await storageSet('entries:' + date, entries, true);
+}
+async function loadClosed(date){
+  state.closed = await storageGet('closed:' + date, true, false);
+}
+async function saveClosed(date, value){
+  return await storageSet('closed:' + date, value, true);
+}
+
+function h(strings, ...vals){
+  return strings.reduce((acc, s, i) => acc + s + (vals[i] !== undefined ? vals[i] : ''), '');
+}
+function esc(str){
+  return String(str === undefined || str === null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function render(){
+  const app = document.getElementById('app');
+  if(state.view === 'login') app.innerHTML = viewLogin();
+  else if(state.view === 'workerMain') app.innerHTML = viewWorkerMain();
+  else if(state.view === 'inspectorMain') app.innerHTML = viewInspectorMain();
+  else if(state.view === 'entryForm') app.innerHTML = viewEntryForm();
+  else if(state.view === 'confirmInject') app.innerHTML = viewConfirmInject();
+  else if(state.view === 'adminMain') app.innerHTML = viewAdminMain();
+  attachHandlers();
+}
+
+/* ---------- LOGIN ---------- */
+function roleLabel(role){
+  return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
+}
+
+function viewLogin(){
+  return h`
+    <div class="header-block" style="margin-top:40px;text-align:center;">
+      <h1 style="font-size:22px;">생계차량 입고 관리</h1>
+      <p class="sub">한강식품 생산1팀</p>
+    </div>
+    <div class="stack">
+      <button class="btn btn-primary" data-action="role-open" data-role="worker">작업자로 접속</button>
+      <button class="btn" data-action="role-open" data-role="inspector">검사관으로 접속</button>
+      <button class="btn" data-action="role-open" data-role="admin">관리자로 접속</button>
+      <button class="btn" data-action="monitor-login">모니터링으로 접속 (보기 전용)</button>
+    </div>
+    ${state.loginRole ? `
+      <div id="role-login-box" style="margin-top:16px;" class="card">
+        <div style="padding:16px;">
+          <label class="label">${esc(roleLabel(state.loginRole))} 접근 코드</label>
+          <input class="input" type="password" inputmode="numeric" id="role-code" placeholder="코드 입력">
+          ${state.loginError ? `<p class="error">${esc(state.loginError)}</p>` : ''}
+          <button class="btn btn-primary" style="margin-top:12px;" data-action="role-login">확인</button>
+        </div>
+      </div>
+    ` : ''}
+  `;
+}
+
+function premiumTag(p){
+  if(p === 'G마크') return 'G';
+  if(p === '무항생제') return '무항';
+  if(p === '일반') return '일반';
+  return '';
+}
+
+function premiumColor(p){
+  if(p === 'G마크') return '#1B7A3D';
+  if(p === '무항생제') return '#9A7B0A';
+  if(p === '일반') return '#000000';
+  return 'inherit';
+}
+
+function premiumDisplay(premium, animalWelfare){
+  const tag = premiumTag(premium);
+  if(!tag) return '';
+  return animalWelfare ? tag + '(동물)' : tag;
+}
+
+function premiumSpan(premium, animalWelfare){
+  const label = premiumDisplay(premium, animalWelfare);
+  if(!label) return '';
+  return `<span style="color:${premiumColor(premium)};font-weight:800;">${esc(label)}</span>`;
+}
+
+function chickenTag(t){
+  if(t === '육계') return '육';
+  if(t === '삼계') return '삼';
+  return '';
+}
+
+function vehicleBlock(e){
+  return `<div class="v-block"><span class="v-code">${esc(e.vehicleCode)}</span><span class="v-num">(${esc(e.vehicleNumber)})</span></div>`;
+}
+
+function sortEntriesForDisplay(line){
+  const lineEntries = state.entries.filter(e => e.line === line);
+  const done = lineEntries.filter(e => e.injectOrder !== null).sort((a, b) => a.injectOrder - b.injectOrder);
+  const floor = lineEntries.filter(e => e.injectOrder === null && e.waitState !== '가입력').sort((a, b) => a.seq - b.seq);
+  const pre = lineEntries.filter(e => e.injectOrder === null && e.waitState === '가입력').sort((a, b) => a.seq - b.seq);
+  return [...done, ...floor, ...pre];
+}
+
+function orderBadge(e){
+  if(e.injectOrder !== null){
+    return `<div class="badge badge-done">${e.injectOrder}</div>`;
+  }
+  if(e.waitState === '가입력'){
+    return `<div class="badge badge-pre">가입력</div>`;
+  }
+  return `<div class="badge badge-wait">바닥</div>`;
+}
+
+function orderValueOf(e){
+  if(e.injectOrder !== null) return 'num:' + e.injectOrder;
+  return e.waitState === '가입력' ? 'PRE' : 'FLOOR';
+}
+
+function parseOrderValue(v){
+  if(v === 'PRE') return { injectOrder: null, waitState: '가입력' };
+  if(v === 'FLOOR' || !v) return { injectOrder: null, waitState: '바닥' };
+  return { injectOrder: parseInt(v.slice(4), 10), waitState: null };
+}
+
+function orderSelectOptionsHtml(line, excludeEntryId, currentValue){
+  const numOptions = getOrderOptions(line, excludeEntryId);
+  return `
+    <option value="PRE" ${currentValue==='PRE'?'selected':''}>가입력 (아직 도착 전, 정보만 입력)</option>
+    <option value="FLOOR" ${currentValue==='FLOOR'?'selected':''}>바닥 (도착해서 대기 중)</option>
+    ${numOptions.map(n => `<option value="num:${n}" ${currentValue===('num:'+n)?'selected':''}>${n}번째 투입</option>`).join('')}
+  `;
+}
+
+/* ---------- WORKER MAIN ---------- */
+function renderLineColumn(line){
+  const entries = sortEntriesForDisplay(line);
+  const locked = state.closed || state.role === 'monitor';
+  const rows = entries.map(e => h`
+    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${locked ? '' : `data-action="open-confirm" data-id="${e.id}"`}>
+      ${orderBadge(e)}
+      <div class="entry-main">
+        ${vehicleBlock(e)}
+      </div>
+      <div class="farm-col">
+        <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : esc(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
+      </div>
+    </div>
+  `).join('');
+
+  const isLine2 = line === '2라인';
+  return h`
+    <div class="wm-col">
+      <div class="wm-col-header ${isLine2 ? 'amber' : 'blue'}">
+        <span class="wm-col-title">${isLine2 ? '2라인' : '1라인'}</span>
+        ${locked
+          ? `<button class="wm-add-btn" disabled style="opacity:0.4;">차량등록</button>`
+          : `<button class="wm-add-btn" data-action="new-entry" data-line="${line}">차량등록</button>`}
+      </div>
+      <div class="wm-col-body">
+        ${rows || `<div class="empty" style="padding:20px 10px;font-size:12px;">등록된 차량이 없습니다.</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function viewWorkerMain(){
+  const isMonitor = state.role === 'monitor';
+  return h`
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input class="input" type="date" id="worker-date" value="${esc(state.date)}" style="min-height:32px;padding:0 6px;width:126px;font-size:13px;">
+        <button class="btn-box" data-action="worker-refresh">새로고침</button>
+        ${isMonitor
+          ? `<span class="role-pill">모니터링(보기 전용)</span>`
+          : state.closed
+            ? `<button class="btn-box" style="background:var(--green-bg);color:var(--green);border-color:var(--green);" data-action="reopen-day">마감 완료</button>`
+            : `<button class="btn-box" data-action="close-day">투입 마감</button>`}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="btn-ghost" data-action="logout">로그아웃</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">${syncIndicator()}</div>
+    <div style="background:var(--text);color:#fff;border-radius:10px;padding:12px 0;text-align:center;font-size:14px;font-weight:700;margin-bottom:10px;">
+      지금 등록 중인 날짜: ${formatDateKorean(state.date)}
+    </div>
+    <div class="tabs">
+      <button class="tab ${state.workerLineTab==='1라인' ? 'sel-1' : ''}" data-action="set-worker-line" data-line="1라인">1라인</button>
+      <button class="tab ${state.workerLineTab==='2라인' ? 'sel-2' : ''}" data-action="set-worker-line" data-line="2라인">2라인</button>
+    </div>
+    ${renderLineColumn(state.workerLineTab)}
+  `;
+}
+
+/* ---------- INSPECTOR MAIN ---------- */
+function renderInspectorColumn(line){
+  const entries = sortEntriesForDisplay(line);
+  const rows = entries.map(e => h`
+    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}">
+      <input type="checkbox" class="insp-checkbox" data-id="${e.id}" ${e.inspected ? 'checked' : ''}>
+      <div class="entry-main">
+        ${vehicleBlock(e)}
+      </div>
+      <div class="farm-col">
+        <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : esc(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
+      </div>
+      ${orderBadge(e)}
+    </div>
+  `).join('');
+
+  const isLine2 = line === '2라인';
+  return h`
+    <div class="wm-col">
+      <div class="wm-col-header ${isLine2 ? 'amber' : 'blue'}">
+        <span class="wm-col-title">${isLine2 ? '2라인' : '1라인'}</span>
+        <div style="display:flex;gap:6px;">
+          <button class="wm-add-btn" style="background:rgba(255,255,255,0.18);" data-action="inspect-cancel" data-line="${line}">취소</button>
+          <button class="wm-add-btn" data-action="inspect-complete" data-line="${line}">검사확정</button>
+        </div>
+      </div>
+      <div class="wm-col-body" data-line="${line}">
+        ${rows || `<div class="empty" style="padding:20px 10px;font-size:12px;">등록된 차량이 없습니다.</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function viewInspectorMain(){
+  return h`
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input class="input" type="date" id="worker-date" value="${esc(state.date)}" style="min-height:32px;padding:0 6px;width:126px;font-size:13px;">
+        <button class="btn-box" data-action="worker-refresh">새로고침</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="role-pill">검사관</span>
+        <button class="btn-ghost" data-action="logout">로그아웃</button>
+      </div>
+    </div>
+    <div style="margin-bottom:12px;">${syncIndicator()}</div>
+    <div class="tabs">
+      <button class="tab ${state.inspectorLineTab==='1라인' ? 'sel-1' : ''}" data-action="set-inspector-line" data-line="1라인">1라인</button>
+      <button class="tab ${state.inspectorLineTab==='2라인' ? 'sel-2' : ''}" data-action="set-inspector-line" data-line="2라인">2라인</button>
+    </div>
+    ${renderInspectorColumn(state.inspectorLineTab)}
+  `;
+}
+
+
+/* ---------- ENTRY FORM ---------- */
+function viewEntryForm(){
+  const ne = state.newEntry;
+  const errs = state.formErrors;
+
+  return h`
+    <div class="backbar">
+      <button class="backbtn" data-action="cancel-entry">←</button>
+      <h2 style="margin:0;">신규 등록</h2>
+    </div>
+
+    <div class="field">
+      <span class="label">등록 라인</span>
+      <div class="readonly-box" style="border-style:solid;${ne.line === '2라인' ? `border-color:var(--amber);color:var(--amber-dark);` : `border-color:var(--blue);color:var(--blue-dark);`}">
+        ${ne.line === '2라인' ? '2라인 (하이)' : '1라인 (세미·센터·삼계)'} 탭에 등록됩니다
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">차량 코드</span>
+      ${ne.vehicleMode === 'list' ? `
+        <select class="input" id="ne-vehicle-select" data-change="ne-vehicle-select">
+          <option value="">선택하세요</option>
+          ${sortedVehicleCodes().map(c => `<option value="${esc(c)}" ${ne.vehicleCode===c?'selected':''}>${esc(c)}(${esc(findNumberByCode(c) || '')})</option>`).join('')}
+          <option value="__manual__">목록에 없음 - 직접 입력</option>
+        </select>
+        ${ne.vehicleCode ? `<div class="readonly-box" style="margin-top:8px;">차량 번호: <strong>${esc(findNumberByCode(ne.vehicleCode) || '')}</strong></div>` : ''}
+      ` : `
+        <div class="stack">
+          <input class="input" type="text" id="ne-vehicle-code-manual" value="${esc(ne.vehicleCodeManual)}" placeholder="차량 코드 (예: S-3)">
+          <input class="input" type="text" inputmode="numeric" maxlength="4" id="ne-vehicle-number-manual" value="${esc(ne.vehicleNumberManual)}" placeholder="차량 번호 4자리">
+          ${Object.keys(state.vehicles).length ? `<button class="btn-ghost" type="button" data-action="ne-vehicle-back-list">← 목록에서 선택</button>` : ''}
+        </div>
+      `}
+      ${errs.vehicle ? `<p class="error">${esc(errs.vehicle)}</p>` : ''}
+    </div>
+
+    <div class="field">
+      <span class="label">농가 (${esc(state.date)} 등록 목록)</span>
+      ${state.farms.length === 0 ? `<p class="sub" style="margin-bottom:8px;">오늘 등록된 농가가 없습니다. 직접 입력해주세요.</p>` : ''}
+      ${ne.farmMode === 'list' ? `
+        <select class="input" id="ne-farm-select" data-change="ne-farm-select">
+          <option value="">선택하세요</option>
+          ${state.farms.map(f => `<option value="${f.id}" ${ne.farmId===f.id?'selected':''}>${esc(f.name)}</option>`).join('')}
+          <option value="__manual__">목록에 없음 - 직접 입력</option>
+        </select>
+        ${ne.farmId ? (() => {
+          const f = state.farms.find(x => x.id === ne.farmId);
+          return f ? `<div class="readonly-box" style="margin-top:8px;">프리미엄: <strong>${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)}</strong>${f.chickenType ? ' · <strong>' + esc(f.chickenType) + '</strong>' : ''}${(f.avgWeight !== undefined && f.avgWeight !== null) ? ' · <strong>' + esc(f.avgWeight) + 'kg</strong>' : ''} (자동)</div>` : '';
+        })() : ''}
+      ` : `
+        <div class="stack">
+          <input class="input" type="text" id="ne-farm-name" value="${esc(ne.farmNameManual || '')}" placeholder="농가명 직접 입력">
+          <select class="input" id="ne-farm-premium">
+            <option value="G마크" ${ne.premiumManual==='G마크'?'selected':''}>G마크</option>
+            <option value="무항생제" ${ne.premiumManual==='무항생제'?'selected':''}>무항생제</option>
+            <option value="일반" ${ne.premiumManual==='일반'?'selected':''}>일반</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px;">
+            <input type="checkbox" id="ne-animal-welfare" style="width:18px;height:18px;" ${ne.animalWelfareManual ? 'checked' : ''}>
+            동물복지 인증 함께 보유
+          </label>
+          <select class="input" id="ne-chicken-type">
+            <option value="육계" ${ne.chickenTypeManual==='육계'?'selected':''}>육계</option>
+            <option value="삼계" ${ne.chickenTypeManual==='삼계'?'selected':''}>삼계</option>
+          </select>
+          <input class="input" type="text" inputmode="decimal" id="ne-avg-weight-manual" placeholder="평체 (kg) 예: 1.85" value="${esc(ne.avgWeightManual)}">
+          ${errs.weight ? `<p class="error">${esc(errs.weight)}</p>` : ''}
+          ${state.farms.length ? `<button class="btn-ghost" type="button" data-action="ne-farm-back-list">← 목록에서 선택</button>` : ''}
+        </div>
+      `}
+      ${errs.farm ? `<p class="error">${esc(errs.farm)}</p>` : ''}
+    </div>
+
+    <div class="field">
+      <span class="label">투입 순서</span>
+      <select class="input" id="ne-order">
+        ${orderSelectOptionsHtml(ne.line, null, ne.order)}
+      </select>
+      <p class="fixed-note">아직 차량이 도착 전이면 "가입력", 도착해서 대기 중이면 "바닥"을 선택하세요.</p>
+    </div>
+
+    <div class="field">
+      <span class="label">순서 강제투입 (이미 투입된 자리에 끼워넣기)</span>
+      <select class="input" id="ne-force-order">
+        <option value="">선택 안 함</option>
+        ${usedOrders(ne.line, null).map(n => `<option value="${n}" ${ne.forceOrder===String(n) ? 'selected' : ''}>${n}번 자리에 끼워넣기</option>`).join('')}
+      </select>
+      <p class="fixed-note">선택하면 위 투입 순서는 무시되고, 그 번호부터 뒤 차량들의 순번이 하나씩 밀리면서 이 차량이 그 자리를 가져갑니다.</p>
+    </div>
+
+    <button class="btn btn-primary" data-action="save-entry">등록</button>
+  `;
+}
+
+/* ---------- CONFIRM INJECT ---------- */
+function viewConfirmInject(){
+  const e = state.entries.find(x => x.id === state.confirmEntryId);
+  if(!e) return `<p>항목을 찾을 수 없습니다.</p>`;
+  return h`
+    <div class="backbar">
+      <button class="backbtn" data-action="cancel-confirm">←</button>
+      <h2 style="margin:0;">등록 정보 수정</h2>
+    </div>
+    <div class="card" style="padding:16px;margin-bottom:18px;">
+      <p style="font-weight:600;font-size:15px;">${esc(e.vehicleCode)} · ${esc(e.vehicleNumber)}</p>
+      <p class="sub" style="margin-top:4px;">${esc(e.farmName)}${e.premium ? ' · ' + premiumSpan(e.premium, e.animalWelfare) : ''}${e.weight !== null ? ' · ' + esc(e.weight) + 'kg' : ' · 중량 입력대기'}</p>
+    </div>
+
+    <div class="field">
+      <span class="label">라인</span>
+      <div class="row">
+        <button class="btn-line col ${e.line === '1라인' ? 'active-1' : ''}" data-action="confirm-line" data-line="1라인">1라인</button>
+        <button class="btn-line col ${e.line === '2라인' ? 'active-2' : ''}" data-action="confirm-line" data-line="2라인">2라인</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">투입 순서</span>
+      <select class="input" id="confirm-order">
+        ${orderSelectOptionsHtml(e.line, e.id, orderValueOf(e))}
+      </select>
+      <p class="fixed-note">이미 투입된 순번은 목록에서 빠져 있어요.</p>
+    </div>
+
+    <div class="field">
+      <span class="label">순서 강제투입 (이미 투입된 자리에 끼워넣기)</span>
+      <select class="input" id="confirm-force-order">
+        <option value="">선택 안 함</option>
+        ${usedOrders(e.line, e.id).map(n => `<option value="${n}">${n}번 자리에 끼워넣기</option>`).join('')}
+      </select>
+      <p class="fixed-note">선택하면 위 투입 순서는 무시되고, 그 번호부터 뒤 차량들의 순번이 하나씩 밀립니다.</p>
+    </div>
+
+    <button class="btn btn-primary" data-action="do-confirm">저장</button>
+  `;
+}
+
+/* ---------- ADMIN MAIN ---------- */
+function viewAdminMain(){
+  return h`
+    <div class="topbar">
+      <span class="sub">관리자</span>
+      <button class="btn-ghost" data-action="logout">로그아웃</button>
+    </div>
+    <div style="margin-bottom:10px;">${syncIndicator()}</div>
+    <div class="tabs">
+      <button class="tab ${state.adminTab==='farms' ? 'sel-2' : ''}" data-action="admin-tab" data-tab="farms">농가 사전 등록</button>
+      <button class="tab ${state.adminTab==='vehicles' ? 'sel-1' : ''}" data-action="admin-tab" data-tab="vehicles">차량 코드 관리</button>
+    </div>
+    <div class="tabs">
+      <button class="tab ${state.adminTab==='excel' ? 'sel-2' : ''}" style="flex:none;padding:12px 18px;" data-action="admin-tab" data-tab="excel">엑셀 일괄 등록</button>
+    </div>
+    ${state.adminTab === 'farms' ? adminFarmsPanel() : state.adminTab === 'vehicles' ? adminVehiclesPanel() : adminExcelPanel()}
+  `;
+}
+
+function adminFarmsPanel(){
+  const list = state.farms.map(f => h`
+    <div class="entry-row">
+      <div class="entry-main">
+        <div class="v">${esc(f.name)}</div>
+        <div class="f">${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)}${f.chickenType ? ' · ' + esc(f.chickenType) : ''}${(f.avgWeight !== undefined && f.avgWeight !== null) ? ' · ' + esc(f.avgWeight) + 'kg' : ''}</div>
+      </div>
+      <button class="btn-ghost btn-danger" data-action="farm-delete" data-id="${f.id}">삭제</button>
+    </div>
+  `).join('');
+
+  return h`
+    <div style="background:var(--text);color:#fff;border-radius:12px;padding:14px 16px;margin-bottom:16px;text-align:center;">
+      <div style="font-size:12px;opacity:0.75;margin-bottom:2px;">지금 등록 중인 날짜</div>
+      <div style="font-size:24px;font-weight:800;">${formatDateKorean(state.farmDate)}</div>
+    </div>
+    <div class="field">
+      <span class="label">등록 대상 날짜</span>
+      <div class="row">
+        <div class="col"><input class="input" type="date" id="farm-date" value="${esc(state.farmDate)}"></div>
+        <button class="btn" style="width:auto;padding:0 14px;flex:0 0 auto;" data-action="farm-date-shortcut" data-offset="0">오늘</button>
+        <button class="btn" style="width:auto;padding:0 14px;flex:0 0 auto;" data-action="farm-date-shortcut" data-offset="1">내일</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button class="btn" style="width:auto;padding:0 16px;flex:0 0 auto;" data-action="farm-refresh">새로고침</button>
+      </div>
+      <p class="fixed-note">날짜별로 등록한 농가는 삭제하지 않는 한 계속 저장되어 있어요. 날짜를 바꾼 뒤에는 "새로고침"을 눌러야 그 날짜의 목록을 불러옵니다.</p>
+    </div>
+    <div class="card" style="padding:16px;margin-bottom:16px;">
+      <span class="label">농가 추가</span>
+      <div class="stack">
+        <input class="input" type="text" id="farm-name" placeholder="농가명" value="${esc(state.farmDraft.name)}">
+        <select class="input" id="farm-premium">
+          <option value="G마크" ${state.farmDraft.premium==='G마크'?'selected':''}>G마크</option>
+          <option value="무항생제" ${state.farmDraft.premium==='무항생제'?'selected':''}>무항생제</option>
+          <option value="일반" ${state.farmDraft.premium==='일반'?'selected':''}>일반</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px;">
+          <input type="checkbox" id="farm-animal-welfare" style="width:18px;height:18px;" ${state.farmDraft.animalWelfare ? 'checked' : ''}>
+          동물복지 인증 함께 보유
+        </label>
+        <select class="input" id="farm-chicken-type">
+          <option value="육계" ${state.farmDraft.chickenType==='육계'?'selected':''}>육계</option>
+          <option value="삼계" ${state.farmDraft.chickenType==='삼계'?'selected':''}>삼계</option>
+        </select>
+        <input class="input" type="text" inputmode="decimal" id="farm-avg-weight" placeholder="대표 평체 (kg) 예: 1.85" value="${esc(state.farmDraft.avgWeight)}">
+        <button class="btn btn-primary" data-action="farm-add">추가</button>
+      </div>
+    </div>
+    <span class="label">${esc(state.farmDate)} 등록 목록</span>
+    <div class="card">
+      ${list || `<div class="empty">등록된 농가가 없습니다.</div>`}
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px;" data-action="farm-save">저장</button>
+  `;
+}
+
+function adminVehiclesPanel(){
+  const entries = Object.entries(state.vehicles);
+  const list = entries.map(([num, code]) => h`
+    <div class="entry-row">
+      <div class="entry-main">
+        <div class="v">${esc(code)}</div>
+        <div class="f">${esc(num)}</div>
+      </div>
+      <button class="btn-ghost btn-danger" data-action="vehicle-delete" data-num="${esc(num)}">삭제</button>
+    </div>
+  `).join('');
+
+  return h`
+    <div class="card" style="padding:16px;margin-bottom:16px;">
+      <span class="label">차량 추가 / 수정</span>
+      <div class="stack">
+        <input class="input" type="text" inputmode="numeric" maxlength="4" id="vehicle-number" placeholder="차량 번호 4자리" value="${esc(state.vehicleDraft.number)}">
+        <input class="input" type="text" id="vehicle-code" placeholder="차량 코드 (예: S-3)" value="${esc(state.vehicleDraft.code)}">
+        <button class="btn btn-primary" data-action="vehicle-add">저장</button>
+      </div>
+    </div>
+    <button class="btn btn-danger" style="margin-bottom:16px;" data-action="vehicle-reset">차량 데이터 전체 초기화 (기본 39개 목록으로)</button>
+    <button class="btn" style="margin-bottom:16px;" data-action="vehicle-refresh">새로고침</button>
+    <span class="label">등록된 차량 (${entries.length})</span>
+    <div class="card">
+      ${list || `<div class="empty">등록된 차량이 없습니다.</div>`}
+    </div>
+  `;
+}
+
+function adminExcelPanel(){
+  const imp = state.excelImport;
+  return h`
+    <div class="card" style="padding:16px;margin-bottom:16px;">
+      <span class="label">배차표 엑셀 업로드 (.xlsx)</span>
+      <input type="file" id="excel-file-input" data-change="excel-file-select" accept=".xlsx" style="margin-top:8px;display:block;">
+      <p class="fixed-note">"배차" 시트를 자동으로 읽어서 농가·라인·프리미엄·평체·차량코드를 인식합니다. 업로드하면 아래에 미리보기가 뜨고, 확인 후 등록하시면 됩니다.</p>
+    </div>
+    ${imp ? renderExcelPreview(imp) : ''}
+  `;
+}
+
+function renderExcelPreview(imp){
+  const totalVehicles = imp.farms.reduce((s, f) => s + f.vehicles.length, 0);
+  const farmRows = imp.farms.map(f => h`
+    <div class="entry-row">
+      <div class="entry-main">
+        <div class="v">${esc(f.name)} <span class="sub">(${esc(f.line)})</span></div>
+        <div class="f">${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)} · ${esc(f.chickenType)} · ${f.avgWeight !== null ? esc(f.avgWeight) + 'kg' : '평체 미확인'} · 차량 ${f.vehicles.length}대</div>
+      </div>
+    </div>
+  `).join('');
+
+  return h`
+    <div class="card" style="padding:16px;margin-bottom:16px;">
+      <span class="label">등록 대상 날짜</span>
+      <input class="input" type="date" id="excel-import-date" value="${esc(imp.date)}">
+      <p class="fixed-note">엑셀에서 자동으로 인식한 날짜예요. 다르면 수정해주세요.</p>
+    </div>
+    <div class="card" style="padding:16px;margin-bottom:16px;">
+      <p style="font-weight:700;font-size:15px;">농가 ${imp.farms.length}곳 · 차량 ${totalVehicles}대 인식됨</p>
+      <p class="sub" style="margin-top:4px;">등록되는 차량은 전부 "가입력" 상태로 들어가고, 실제 도착 시 작업자가 순서를 지정하면 됩니다.</p>
+    </div>
+    <span class="label">인식된 농가 목록</span>
+    <div class="card" style="margin-bottom:16px;">
+      ${farmRows || `<div class="empty">인식된 농가가 없습니다.</div>`}
+    </div>
+    <button class="btn btn-primary" data-action="excel-commit">이 내용으로 일괄 등록</button>
+    <button class="btn-ghost" style="margin-top:10px;" data-action="excel-cancel">취소</button>
+  `;
+}
+
+/* ---------- EVENT HANDLING ---------- */
+function attachHandlers(){
+  document.querySelectorAll('[data-action]').forEach(el => {
+    el.addEventListener('click', onAction);
+  });
+  document.querySelectorAll('[data-change]').forEach(el => {
+    el.addEventListener('change', onChange);
+  });
+  const codeInput = document.getElementById('role-code');
+  if(codeInput) codeInput.addEventListener('keydown', e => { if(e.key === 'Enter') doRoleLogin(); });
+}
+
+async function onChange(ev){
+  const el = ev.currentTarget;
+  const action = el.dataset.change;
+  if(action === 'excel-file-select'){
+    const file = el.files && el.files[0];
+    if(!file) return;
+    await handleExcelFile(file);
+    return;
+  }
+  syncEntryFormInputs();
+  if(action === 'ne-vehicle-select'){
+    if(el.value === '__manual__'){
+      state.newEntry.vehicleMode = 'manual';
+      state.newEntry.vehicleCode = '';
+    } else {
+      state.newEntry.vehicleCode = el.value;
+    }
+    render();
+  }
+  else if(action === 'ne-farm-select'){
+    if(el.value === '__manual__'){
+      state.newEntry.farmMode = 'manual';
+      state.newEntry.farmId = null;
+    } else {
+      state.newEntry.farmId = el.value;
+    }
+    render();
+  }
+}
+
+async function onAction(ev){
+  const el = ev.currentTarget;
+  const action = el.dataset.action;
+  if(!action) return;
+
+  if(action === 'role-open'){
+    state.loginRole = el.dataset.role;
+    state.loginError = '';
+    render();
+    const inp = document.getElementById('role-code');
+    if(inp) inp.focus();
+  }
+  else if(action === 'role-login'){
+    await doRoleLogin();
+  }
+  else if(action === 'monitor-login'){
+    await doMonitorLogin();
+  }
+  else if(action === 'logout'){
+    try{ await firebase.auth().signOut(); }catch(e){}
+    state.role = null;
+    state.loginRole = null;
+    state.view = 'login';
+    state.loginError = '';
+    render();
+  }
+  else if(action === 'set-worker-line'){
+    state.workerLineTab = el.dataset.line;
+    render();
+  }
+  else if(action === 'set-inspector-line'){
+    state.inspectorLineTab = el.dataset.line;
+    render();
+  }
+  else if(action === 'inspect-complete'){
+    if(state.role !== 'inspector') return;
+    const line = el.dataset.line;
+    const body = document.querySelector(`.wm-col-body[data-line="${line}"]`);
+    if(!body) return;
+    const checked = Array.from(body.querySelectorAll('.insp-checkbox:checked')).map(cb => cb.dataset.id);
+    if(checked.length === 0) return;
+    checked.forEach(id => {
+      const e = state.entries.find(x => x.id === id);
+      if(e) e.inspected = true;
+    });
+    await saveEntries(state.date, state.entries);
+    state.lastSynced = new Date();
+    render();
+  }
+  else if(action === 'inspect-cancel'){
+    if(state.role !== 'inspector') return;
+    const line = el.dataset.line;
+    const body = document.querySelector(`.wm-col-body[data-line="${line}"]`);
+    if(!body) return;
+    const checked = Array.from(body.querySelectorAll('.insp-checkbox:checked')).map(cb => cb.dataset.id);
+    if(checked.length === 0) return;
+    checked.forEach(id => {
+      const e = state.entries.find(x => x.id === id);
+      if(e) e.inspected = false;
+    });
+    await saveEntries(state.date, state.entries);
+    state.lastSynced = new Date();
+    render();
+  }
+  else if(action === 'worker-refresh'){
+    const dateInput = document.getElementById('worker-date');
+    const date = dateInput ? dateInput.value : state.date;
+    if(date && date !== state.date){
+      if(!confirm(`${formatDateKorean(date)} 도계 맞습니까?`)){
+        if(dateInput) dateInput.value = state.date;
+        return;
+      }
+    }
+    if(date) state.date = date;
+    await loadVehicles();
+    await loadFarms(state.date);
+    await loadEntries(state.date);
+    await loadClosed(state.date);
+    state.lastSynced = new Date();
+    render();
+  }
+  else if(action === 'close-day'){
+    if(state.role === 'monitor') return;
+    if(!confirm(`${state.date} 입고 작업을 마감하시겠습니까?\n마감 후에는 등록/수정이 불가능합니다.`)) return;
+    const ok = await saveClosed(state.date, true);
+    if(ok){
+      state.closed = true;
+      render();
+    } else {
+      alert('마감 처리에 실패했습니다. 인터넷 연결을 확인해주세요.');
+    }
+  }
+  else if(action === 'reopen-day'){
+    if(state.role === 'monitor') return;
+    if(!confirm('마감을 해지하시겠습니까?')) return;
+    const ok = await saveClosed(state.date, false);
+    if(ok){
+      state.closed = false;
+      render();
+    } else {
+      alert('처리에 실패했습니다. 인터넷 연결을 확인해주세요.');
+    }
+  }
+  else if(action === 'new-entry'){
+    if(state.closed || state.role === 'monitor') return;
+    const line = el.dataset.line || '2라인';
+    await loadVehicles();
+    await loadFarms(state.date);
+    state.lastSynced = new Date();
+    state.newEntry = {
+      line,
+      vehicleMode: Object.keys(state.vehicles).length ? 'list' : 'manual',
+      vehicleCode: '',
+      vehicleCodeManual: '',
+      vehicleNumberManual: '',
+      farmMode: state.farms.length ? 'list' : 'manual',
+      farmId: null,
+      farmNameManual: '',
+      premiumManual: 'G마크',
+      animalWelfareManual: false,
+      avgWeightManual: '',
+      chickenTypeManual: '육계',
+      order: 'FLOOR',
+      forceOrder: ''
+    };
+    state.formErrors = {};
+    state.view = 'entryForm';
+    render();
+  }
+  else if(action === 'cancel-entry'){
+    state.view = 'workerMain';
+    render();
+  }
+  else if(action === 'ne-vehicle-back-list'){
+    syncEntryFormInputs();
+    state.newEntry.vehicleMode = 'list';
+    render();
+  }
+  else if(action === 'ne-farm-back-list'){
+    syncEntryFormInputs();
+    state.newEntry.farmMode = 'list';
+    state.newEntry.farmId = null;
+    render();
+  }
+  else if(action === 'save-entry'){
+    syncEntryFormInputs();
+    await handleSaveEntry();
+  }
+  else if(action === 'open-confirm'){
+    if(state.closed || state.role === 'monitor') return;
+    const id = el.dataset.id;
+    if(!id) return;
+    const e = state.entries.find(x => x.id === id);
+    if(!e) return;
+    state.confirmEntryId = id;
+    state.view = 'confirmInject';
+    render();
+  }
+  else if(action === 'cancel-confirm'){
+    state.view = 'workerMain';
+    render();
+  }
+  else if(action === 'confirm-line'){
+    const e = state.entries.find(x => x.id === state.confirmEntryId);
+    if(e && e.line !== el.dataset.line){
+      e.line = el.dataset.line;
+      e.injectOrder = null;
+      e.waitState = '바닥';
+      e.status = '대기';
+      render();
+    }
+  }
+  else if(action === 'do-confirm'){
+    if(state.closed || state.role === 'monitor') return;
+    const e = state.entries.find(x => x.id === state.confirmEntryId);
+    const sel = document.getElementById('confirm-order');
+    let { injectOrder, waitState } = parseOrderValue(sel.value);
+
+    const forceSel = document.getElementById('confirm-force-order');
+    const forceVal = forceSel ? forceSel.value : '';
+    if(forceVal){
+      const forcedPos = parseInt(forceVal, 10);
+      shiftOrdersFrom(e.line, forcedPos, e.id);
+      injectOrder = forcedPos;
+      waitState = null;
+    }
+
+    e.injectOrder = injectOrder;
+    e.waitState = waitState;
+    e.status = injectOrder ? '투입완료' : '대기';
+    await saveEntries(state.date, state.entries);
+    state.lastSynced = new Date();
+    state.view = 'workerMain';
+    render();
+  }
+  else if(action === 'admin-tab'){
+    state.adminTab = el.dataset.tab;
+    render();
+  }
+  else if(action === 'excel-cancel'){
+    state.excelImport = null;
+    render();
+  }
+  else if(action === 'excel-commit'){
+    const dateInput = document.getElementById('excel-import-date');
+    const targetDate = dateInput ? dateInput.value : state.excelImport.date;
+    const totalVehicles = state.excelImport.farms.reduce((s, f) => s + f.vehicles.length, 0);
+    if(!confirm(`${formatDateKorean(targetDate)} 도계로 농가 ${state.excelImport.farms.length}곳, 차량 ${totalVehicles}대를 일괄 등록하시겠습니까?`)) return;
+
+    await loadVehicles();
+    await loadFarms(targetDate);
+    await loadEntries(targetDate);
+
+    const newFarms = [...state.farms];
+    const newEntries = [...state.entries];
+    const seqCounters = {
+      '1라인': newEntries.filter(e => e.line === '1라인').length,
+      '2라인': newEntries.filter(e => e.line === '2라인').length
+    };
+
+    state.excelImport.farms.forEach(f => {
+      newFarms.push({
+        id: uid(),
+        name: f.name,
+        premium: f.premium,
+        chickenType: f.chickenType,
+        animalWelfare: f.animalWelfare,
+        avgWeight: f.avgWeight
+      });
+
+      f.vehicles.forEach(v => {
+        if(!state.vehicles[v.number]){
+          state.vehicles[v.number] = v.code;
+        }
+        seqCounters[f.line] = (seqCounters[f.line] || 0) + 1;
+        newEntries.push({
+          id: uid(),
+          date: targetDate,
+          line: f.line,
+          seq: seqCounters[f.line],
+          vehicleNumber: v.number,
+          vehicleCode: v.code,
+          farmName: f.name,
+          premium: f.premium,
+          chickenType: f.chickenType,
+          animalWelfare: f.animalWelfare,
+          weight: f.avgWeight,
+          status: '대기',
+          injectOrder: null,
+          waitState: '가입력',
+          inspected: false
+        });
+      });
+    });
+
+    await saveVehicles();
+    await saveFarms(targetDate, newFarms);
+    await saveEntries(targetDate, newEntries);
+
+    state.farms = newFarms;
+    state.entries = newEntries;
+    state.farmDate = targetDate;
+    state.excelImport = null;
+    state.lastSynced = new Date();
+    render();
+    alert('일괄 등록이 완료되었습니다.');
+  }
+  else if(action === 'farm-add'){
+    const name = document.getElementById('farm-name').value.trim();
+    const premium = document.getElementById('farm-premium').value;
+    const chickenType = document.getElementById('farm-chicken-type').value;
+    const animalWelfare = document.getElementById('farm-animal-welfare').checked;
+    const avgWeightRaw = document.getElementById('farm-avg-weight').value.trim();
+    if(!name) return;
+    if(!avgWeightRaw || isNaN(parseFloat(avgWeightRaw))){
+      alert('대표 평체를 숫자로 입력해주세요.');
+      return;
+    }
+    const avgWeight = parseFloat(avgWeightRaw);
+    state.farms.push({ id: uid(), name, premium, chickenType, animalWelfare, avgWeight });
+    await saveFarms(state.farmDate, state.farms);
+    state.farmDraft = { name: '', premium: 'G마크', chickenType: '육계', animalWelfare: false, avgWeight: '' };
+    render();
+  }
+  else if(action === 'farm-date-shortcut'){
+    const offset = parseInt(el.dataset.offset, 10) || 0;
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    if(dateStr !== state.farmDate){
+      if(!confirm(`${formatDateKorean(dateStr)} 도계 맞습니까?`)) return;
+    }
+    state.farmDate = dateStr;
+    await loadFarms(state.farmDate);
+    state.lastSynced = new Date();
+    render();
+  }
+  else if(action === 'farm-refresh'){
+    const dateInput = document.getElementById('farm-date');
+    const date = dateInput ? dateInput.value : state.farmDate;
+    if(date && date !== state.farmDate){
+      if(!confirm(`${formatDateKorean(date)} 도계 맞습니까?`)){
+        if(dateInput) dateInput.value = state.farmDate;
+        return;
+      }
+    }
+    if(date) state.farmDate = date;
+    await loadFarms(state.farmDate);
+    state.lastSynced = new Date();
+    render();
+  }
+  else if(action === 'farm-save'){
+    const ok = await saveFarms(state.farmDate, state.farms);
+    if(ok){
+      alert('저장되었습니다.');
+    } else {
+      alert('저장에 실패했습니다. 인터넷 연결을 확인해주세요.');
+    }
+  }
+  else if(action === 'farm-delete'){
+    const id = el.dataset.id;
+    const target = state.farms.find(f => f.id === id);
+    const label = target ? target.name : '이 농가';
+    if(!confirm(`${label}을(를) 정말로 삭제하시겠습니까?`)) return;
+    state.farms = state.farms.filter(f => f.id !== id);
+    await saveFarms(state.farmDate, state.farms);
+    render();
+  }
+  else if(action === 'vehicle-add'){
+    const num = document.getElementById('vehicle-number').value.trim();
+    const code = document.getElementById('vehicle-code').value.trim();
+    if(!num || !code) return;
+    state.vehicles[num] = code;
+    await saveVehicles();
+    state.vehicleDraft = { number: '', code: '' };
+    render();
+  }
+  else if(action === 'vehicle-delete'){
+    const num = el.dataset.num;
+    const code = state.vehicles[num];
+    if(!confirm(`차량번호 ${num}(${code})을(를) 정말로 삭제하시겠습니까?`)) return;
+    delete state.vehicles[num];
+    await saveVehicles();
+    render();
+  }
+  else if(action === 'vehicle-refresh'){
+    await loadVehicles();
+    state.lastSynced = new Date();
+    render();
+  }
+  else if(action === 'vehicle-reset'){
+    const ok = confirm('현재 차량 데이터를 모두 지우고 기본 39개 목록으로 초기화할까요?');
+    if(!ok) return;
+    state.vehicles = { ...SEED_VEHICLES };
+    await saveVehicles();
+    render();
+  }
+}
+
+async function doRoleLogin(){
+  const codeInput = document.getElementById('role-code');
+  const code = codeInput ? codeInput.value.trim() : '';
+  const role = state.loginRole;
+  try{
+    const cred = await firebase.auth().signInAnonymously();
+    const uid = cred.user.uid;
+    await db.ref('roles/' + uid).set({ role, code });
+
+    state.role = role;
+    state.loginError = '';
+
+    if(role === 'worker'){
+      await loadVehicles();
+      await loadFarms(state.date);
+      await loadEntries(state.date);
+      await loadClosed(state.date);
+      state.view = 'workerMain';
+    } else if(role === 'inspector'){
+      await loadEntries(state.date);
+      state.view = 'inspectorMain';
+    } else if(role === 'admin'){
+      await loadVehicles();
+      await loadFarms(state.farmDate);
+      state.view = 'adminMain';
+    }
+    state.lastSynced = new Date();
+    render();
+    pollTick();
+  } catch(e){
+    console.error('role login error', e);
+    state.loginError = '코드가 올바르지 않습니다.';
+    render();
+  }
+}
+
+async function doMonitorLogin(){
+  try{
+    const cred = await firebase.auth().signInAnonymously();
+    const uid = cred.user.uid;
+    await db.ref('roles/' + uid).set({ role: 'monitor', code: 'MONITOR' });
+
+    state.role = 'monitor';
+    state.loginError = '';
+    await loadVehicles();
+    await loadFarms(state.date);
+    await loadEntries(state.date);
+    await loadClosed(state.date);
+    state.view = 'workerMain';
+    state.lastSynced = new Date();
+    render();
+    pollTick();
+  } catch(e){
+    console.error('monitor login error', e);
+    alert('모니터링 접속에 실패했습니다. 인터넷 연결을 확인해주세요.');
+  }
+}
+
+function syncEntryFormInputs(){
+  const ne = state.newEntry;
+  const vcm = document.getElementById('ne-vehicle-code-manual');
+  if(vcm) ne.vehicleCodeManual = vcm.value.trim();
+  const vnm = document.getElementById('ne-vehicle-number-manual');
+  if(vnm) ne.vehicleNumberManual = vnm.value.trim();
+  const fn = document.getElementById('ne-farm-name');
+  if(fn) ne.farmNameManual = fn.value;
+  const fp = document.getElementById('ne-farm-premium');
+  if(fp) ne.premiumManual = fp.value;
+  const faw = document.getElementById('ne-animal-welfare');
+  if(faw) ne.animalWelfareManual = faw.checked;
+  const awm = document.getElementById('ne-avg-weight-manual');
+  if(awm) ne.avgWeightManual = awm.value.trim();
+  const ct = document.getElementById('ne-chicken-type');
+  if(ct) ne.chickenTypeManual = ct.value;
+  const ord = document.getElementById('ne-order');
+  if(ord) ne.order = ord.value;
+  const fo = document.getElementById('ne-force-order');
+  if(fo) ne.forceOrder = fo.value;
+}
+
+function sortedVehicleCodes(){
+  const codes = [...new Set(Object.values(state.vehicles))];
+  return codes.sort((a, b) => {
+    const pa = a.match(/^([A-Za-z]+)-?(\d+)$/);
+    const pb = b.match(/^([A-Za-z]+)-?(\d+)$/);
+    if(pa && pb){
+      if(pa[1] !== pb[1]) return pa[1].localeCompare(pb[1]);
+      return parseInt(pa[2], 10) - parseInt(pb[2], 10);
+    }
+    return a.localeCompare(b);
+  });
+}
+
+function findNumberByCode(code){
+  const target = code.trim().toUpperCase();
+  const match = Object.entries(state.vehicles).find(([num, c]) => c.trim().toUpperCase() === target);
+  return match ? match[0] : null;
+}
+
+function usedOrders(line, excludeEntryId){
+  return state.entries
+    .filter(e => e.line === line && e.id !== excludeEntryId && e.injectOrder !== null)
+    .map(e => e.injectOrder)
+    .sort((a, b) => a - b);
+}
+
+function shiftOrdersFrom(line, fromPosition, excludeEntryId){
+  state.entries.forEach(e => {
+    if(e.line === line && e.id !== excludeEntryId && e.injectOrder !== null && e.injectOrder >= fromPosition){
+      e.injectOrder += 1;
+    }
+  });
+}
+
+function getOrderOptions(line, excludeEntryId){
+  const used = state.entries
+    .filter(e => e.line === line && e.injectOrder !== null && e.id !== excludeEntryId)
+    .map(e => e.injectOrder);
+  const usedSet = new Set(used);
+  const totalCount = state.entries.filter(e => e.line === line).length;
+  const maxUsed = used.length ? Math.max(...used) : 0;
+  const upper = Math.max(maxUsed, totalCount) + 5;
+  const options = [];
+  for(let i = 1; i <= upper; i++){
+    if(!usedSet.has(i)) options.push(i);
+  }
+  return options;
+}
+
+async function handleSaveEntry(){
+  if(state.closed){
+    alert('마감된 날짜입니다. 등록할 수 없습니다.');
+    return;
+  }
+  if(state.role === 'monitor') return;
+  const ne = state.newEntry;
+  const errs = {};
+
+  let vehicleCode, vehicleNumber;
+  if(ne.vehicleMode === 'list'){
+    vehicleCode = ne.vehicleCode;
+    vehicleNumber = vehicleCode ? findNumberByCode(vehicleCode) : null;
+    if(!vehicleCode || !vehicleNumber) errs.vehicle = '차량 코드를 선택해주세요.';
+  } else {
+    vehicleCode = ne.vehicleCodeManual;
+    vehicleNumber = ne.vehicleNumberManual;
+    if(!vehicleCode || !vehicleNumber) errs.vehicle = '차량 코드와 번호를 입력해주세요.';
+  }
+
+  let farmName = '', premium = '', chickenType = '', animalWelfare = false, weight = null;
+  if(ne.farmMode === 'list'){
+    const f = state.farms.find(x => x.id === ne.farmId);
+    if(!f) errs.farm = '농가를 선택하거나 직접 입력해주세요.';
+    else { farmName = f.name; premium = f.premium; chickenType = f.chickenType || ''; animalWelfare = !!f.animalWelfare; weight = (f.avgWeight === undefined || f.avgWeight === null) ? null : f.avgWeight; }
+  } else {
+    if(!ne.farmNameManual || !ne.farmNameManual.trim()) errs.farm = '농가명을 입력해주세요.';
+    else { farmName = ne.farmNameManual.trim(); premium = ne.premiumManual; chickenType = ne.chickenTypeManual; animalWelfare = !!ne.animalWelfareManual; }
+    if(!ne.avgWeightManual || isNaN(parseFloat(ne.avgWeightManual))) errs.weight = '평체를 숫자로 입력해주세요.';
+    else weight = parseFloat(ne.avgWeightManual);
+  }
+
+  if(Object.keys(errs).length){
+    state.formErrors = errs;
+    render();
+    return;
+  }
+
+  if(!state.vehicles[vehicleNumber]){
+    state.vehicles[vehicleNumber] = vehicleCode;
+    await saveVehicles();
+  }
+
+  const seq = state.entries.filter(e => e.line === ne.line).length + 1;
+  let { injectOrder, waitState } = parseOrderValue(ne.order);
+
+  if(ne.forceOrder){
+    const forcedPos = parseInt(ne.forceOrder, 10);
+    shiftOrdersFrom(ne.line, forcedPos, null);
+    injectOrder = forcedPos;
+    waitState = null;
+  }
+
+  const entry = {
+    id: uid(),
+    date: state.date,
+    line: ne.line,
+    seq,
+    vehicleNumber,
+    vehicleCode,
+    farmName,
+    premium,
+    chickenType,
+    animalWelfare,
+    weight,
+    status: injectOrder ? '투입완료' : '대기',
+    injectOrder,
+    waitState,
+    inspected: false
+  };
+  state.entries.push(entry);
+  await saveEntries(state.date, state.entries);
+  state.lastSynced = new Date();
+  state.view = 'workerMain';
+  render();
+}
+
+function syncAdminDraftInputs(){
+  const fn = document.getElementById('farm-name');
+  if(fn) state.farmDraft.name = fn.value;
+  const fp = document.getElementById('farm-premium');
+  if(fp) state.farmDraft.premium = fp.value;
+  const fc = document.getElementById('farm-chicken-type');
+  if(fc) state.farmDraft.chickenType = fc.value;
+  const faw = document.getElementById('farm-animal-welfare');
+  if(faw) state.farmDraft.animalWelfare = faw.checked;
+  const faweight = document.getElementById('farm-avg-weight');
+  if(faweight) state.farmDraft.avgWeight = faweight.value;
+  const vn = document.getElementById('vehicle-number');
+  if(vn) state.vehicleDraft.number = vn.value;
+  const vc = document.getElementById('vehicle-code');
+  if(vc) state.vehicleDraft.code = vc.value;
+}
+
+const POLL_MS = 5000;
+let polling = false;
+
+async function pollTick(){
+  if(polling) return;
+  if(!state.role) return;
+  if(state.view !== 'workerMain' && state.view !== 'inspectorMain' && state.view !== 'adminMain') return;
+
+  polling = true;
+  try{
+    const before = JSON.stringify({ v: state.vehicles, f: state.farms, e: state.entries, c: state.closed });
+
+    if(state.view === 'workerMain'){
+      await loadVehicles();
+      await loadFarms(state.date);
+      await loadEntries(state.date);
+      await loadClosed(state.date);
+    } else if(state.view === 'inspectorMain'){
+      await loadEntries(state.date);
+    } else if(state.view === 'adminMain'){
+      syncAdminDraftInputs();
+      await loadVehicles();
+      await loadFarms(state.farmDate);
+    }
+
+    const after = JSON.stringify({ v: state.vehicles, f: state.farms, e: state.entries, c: state.closed });
+    state.lastSynced = new Date();
+    if(after !== before){
+      render();
+    } else {
+      const ind = document.querySelector('.sync-time');
+      if(ind) ind.textContent = '● 실시간 동기화 · ' + formatTime(state.lastSynced);
+    }
+  } finally {
+    polling = false;
+  }
+}
+
+setInterval(pollTick, POLL_MS);
+
+render();
+</script>
+</body>
+</html>
