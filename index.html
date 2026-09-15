@@ -440,6 +440,20 @@ function viewLogin(){
   `;
 }
 
+const FARM_COLOR_PALETTE = [
+  '#FBDCE2', '#FDF0C8', '#D9EAFB', '#DFF5E3', '#EEE0F8',
+  '#FCE3D2', '#D7F3F0', '#E4E4FB', '#F5E6D3', '#E0F0D9'
+];
+
+function farmColor(name){
+  if(!name) return null;
+  let hash = 0;
+  for(let i = 0; i < name.length; i++){
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  return FARM_COLOR_PALETTE[hash % FARM_COLOR_PALETTE.length];
+}
+
 function premiumTag(p){
   if(p === 'G마크') return 'G';
   if(p === '무항생제') return '무항';
@@ -521,7 +535,7 @@ function renderLineColumn(line){
   const locked = (state.closed || state.role === 'monitor') && !isAdminEntries;
   const selectMode = state.selectMode || isAdminEntries;
   const rows = entries.map(e => h`
-    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${selectMode ? `data-action="toggle-select" data-id="${e.id}"` : (locked ? '' : `data-action="open-confirm" data-id="${e.id}"`)}>
+    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${e.inspected ? '' : `style="background:${farmColor(e.farmName)};"`} ${selectMode ? `data-action="toggle-select" data-id="${e.id}"` : (locked ? '' : `data-action="open-confirm" data-id="${e.id}"`)}>
       ${selectMode ? `<input type="checkbox" style="pointer-events:none;width:18px;height:18px;flex-shrink:0;" ${state.selectedIds.includes(e.id) ? 'checked' : ''}>` : ''}
       ${orderBadge(e)}
       <div class="entry-main">
@@ -603,7 +617,7 @@ function viewWorkerMain(){
 function renderInspectorColumn(line){
   const entries = sortEntriesForDisplay(line);
   const rows = entries.map(e => h`
-    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}">
+    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${e.inspected ? '' : `style="background:${farmColor(e.farmName)};"`}>
       <input type="checkbox" class="insp-checkbox" data-id="${e.id}" ${e.inspected ? 'checked' : ''}>
       <div class="entry-main">
         ${vehicleBlock(e)}
