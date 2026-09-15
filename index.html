@@ -159,7 +159,11 @@ const state = {
   lastSynced: null,
   closed: false,
   workerLineTab: '1라인',
-  inspectorLineTab: '1라인'
+  inspectorLineTab: '1라인',
+  selectMode: false,
+  selectedIds: [],
+  adminEntriesLine: '1라인',
+  entriesManageDate: todayStr()
 };
 
 function todayStr(){
@@ -513,9 +517,12 @@ function orderSelectOptionsHtml(line, excludeEntryId, currentValue){
 /* ---------- WORKER MAIN ---------- */
 function renderLineColumn(line){
   const entries = sortEntriesForDisplay(line);
-  const locked = state.closed || state.role === 'monitor';
+  const isAdminEntries = (state.role === 'admin' && state.adminTab === 'entries');
+  const locked = (state.closed || state.role === 'monitor') && !isAdminEntries;
+  const selectMode = state.selectMode || isAdminEntries;
   const rows = entries.map(e => h`
-    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${locked ? '' : `data-action="open-confirm" data-id="${e.id}"`}>
+    <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${selectMode ? `data-action="toggle-select" data-id="${e.id}"` : (locked ? '' : `data-action="open-confirm" data-id="${e.id}"`)}>
+      ${selectMode ? `<input type="checkbox" style="pointer-events:none;width:18px;height:18px;flex-shrink:0;" ${state.selectedIds.includes(e.id) ? 'checked' : ''}>` : ''}
       ${orderBadge(e)}
       <div class="entry-main">
         ${vehicleBlock(e)}
@@ -531,12 +538,33 @@ function renderLineColumn(line){
     <div class="wm-col">
       <div class="wm-col-header ${isLine2 ? 'amber' : 'blue'}">
         <span class="wm-col-title">${isLine2 ? '2라인' : '1라인'}</span>
-        ${locked
-          ? `<button class="wm-add-btn" disabled style="opacity:0.4;">차량등록</button>`
-          : `<button class="wm-add-btn" data-action="new-entry" data-line="${line}">차량등록</button>`}
+        <div style="display:flex;gap:6px;">
+          ${(!isAdminEntries && !state.selectMode && state.role !== 'monitor') ? `<button class="wm-add-btn" style="background:rgba(255,255,255,0.18);" data-action="select-mode-start" data-line="${line}">선택삭제</button>` : ''}
+          ${isAdminEntries ? '' : (locked
+            ? `<button class="wm-add-btn" disabled style="opacity:0.4;">차량등록</button>`
+            : `<button class="wm-add-btn" data-action="new-entry" data-line="${line}">차량등록</button>`)}
+        </div>
       </div>
+      ${selectMode ? renderSelectControls(line, !isAdminEntries) : ''}
       <div class="wm-col-body">
         ${rows || `<div class="empty" style="padding:20px 10px;font-size:12px;">등록된 차량이 없습니다.</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderSelectControls(line, showCancel){
+  const ids = sortEntriesForDisplay(line).map(e => e.id);
+  const allSelected = ids.length > 0 && ids.every(id => state.selectedIds.includes(id));
+  return h`
+    <div style="padding:10px 10px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+        <input type="checkbox" data-action="select-all-toggle" data-line="${line}" style="width:18px;height:18px;" ${allSelected ? 'checked' : ''}>
+        전체선택 (${state.selectedIds.length}개)
+      </label>
+      <div style="display:flex;gap:6px;">
+        ${showCancel ? `<button class="btn-ghost" data-action="select-mode-cancel">취소</button>` : ''}
+        <button class="btn-box" style="background:var(--danger);color:#fff;border-color:var(--danger);" data-action="select-delete" data-line="${line}">선택 삭제</button>
       </div>
     </div>
   `;
@@ -778,8 +806,9 @@ function viewAdminMain(){
     </div>
     <div class="tabs">
       <button class="tab ${state.adminTab==='excel' ? 'sel-2' : ''}" style="flex:none;padding:12px 18px;" data-action="admin-tab" data-tab="excel">엑셀 일괄 등록</button>
+      <button class="tab ${state.adminTab==='entries' ? 'sel-1' : ''}" style="flex:none;padding:12px 18px;" data-action="admin-tab" data-tab="entries">차량 기록 관리</button>
     </div>
-    ${state.adminTab === 'farms' ? adminFarmsPanel() : state.adminTab === 'vehicles' ? adminVehiclesPanel() : adminExcelPanel()}
+    ${state.adminTab === 'farms' ? adminFarmsPanel() : state.adminTab === 'vehicles' ? adminVehiclesPanel() : state.adminTab === 'excel' ? adminExcelPanel() : adminEntriesPanel()}
   `;
 }
 
@@ -917,6 +946,24 @@ function renderExcelPreview(imp){
   `;
 }
 
+function adminEntriesPanel(){
+  return h`
+    <div class="card" style="padding:16px;margin-bottom:16px;">
+      <span class="label">조회할 날짜</span>
+      <div class="row">
+        <div class="col"><input class="input" type="date" id="entries-manage-date" value="${esc(state.entriesManageDate)}"></div>
+        <button class="btn" style="width:auto;padding:0 14px;flex:0 0 auto;" data-action="entries-date-refresh">새로고침</button>
+      </div>
+      <p class="fixed-note">실수로 잘못 등록되거나 엑셀로 잘못 업로드된 차량을 체크해서 한 번에 삭제할 수 있어요.</p>
+    </div>
+    <div class="tabs">
+      <button class="tab ${state.adminEntriesLine==='1라인' ? 'sel-1' : ''}" data-action="set-admin-entries-line" data-line="1라인">1라인</button>
+      <button class="tab ${state.adminEntriesLine==='2라인' ? 'sel-2' : ''}" data-action="set-admin-entries-line" data-line="2라인">2라인</button>
+    </div>
+    ${renderLineColumn(state.adminEntriesLine)}
+  `;
+}
+
 /* ---------- EVENT HANDLING ---------- */
 function attachHandlers(){
   document.querySelectorAll('[data-action]').forEach(el => {
@@ -987,6 +1034,61 @@ async function onAction(ev){
   }
   else if(action === 'set-worker-line'){
     state.workerLineTab = el.dataset.line;
+    state.selectedIds = [];
+    render();
+  }
+  else if(action === 'select-mode-start'){
+    state.selectMode = true;
+    state.selectedIds = [];
+    render();
+  }
+  else if(action === 'select-mode-cancel'){
+    state.selectMode = false;
+    state.selectedIds = [];
+    render();
+  }
+  else if(action === 'toggle-select'){
+    const id = el.dataset.id;
+    const idx = state.selectedIds.indexOf(id);
+    if(idx === -1) state.selectedIds.push(id); else state.selectedIds.splice(idx, 1);
+    render();
+  }
+  else if(action === 'select-all-toggle'){
+    const line = el.dataset.line;
+    const ids = sortEntriesForDisplay(line).map(e => e.id);
+    const allSelected = ids.length > 0 && ids.every(id => state.selectedIds.includes(id));
+    state.selectedIds = allSelected ? [] : ids.slice();
+    render();
+  }
+  else if(action === 'select-delete'){
+    if(state.selectedIds.length === 0) return;
+    if(!confirm(`선택한 ${state.selectedIds.length}개 항목을 삭제하시겠습니까?\n삭제하면 되돌릴 수 없습니다.`)) return;
+    state.entries = state.entries.filter(e => !state.selectedIds.includes(e.id));
+    const dateToSave = (state.role === 'admin' && state.adminTab === 'entries') ? state.entriesManageDate : state.date;
+    await saveEntries(dateToSave, state.entries);
+    state.selectedIds = [];
+    state.selectMode = false;
+    state.lastSynced = new Date();
+    render();
+  }
+  else if(action === 'set-admin-entries-line'){
+    state.adminEntriesLine = el.dataset.line;
+    state.selectedIds = [];
+    render();
+  }
+  else if(action === 'entries-date-refresh'){
+    const dateInput = document.getElementById('entries-manage-date');
+    const date = dateInput ? dateInput.value : state.entriesManageDate;
+    if(date && date !== state.entriesManageDate){
+      if(!confirm(`${formatDateKorean(date)} 도계 맞습니까?`)){
+        if(dateInput) dateInput.value = state.entriesManageDate;
+        return;
+      }
+    }
+    if(date) state.entriesManageDate = date;
+    await loadEntries(state.entriesManageDate);
+    state.selectedIds = [];
+    state.lastSynced = new Date();
     render();
   }
   else if(action === 'set-inspector-line'){
@@ -1156,6 +1258,11 @@ async function onAction(ev){
   }
   else if(action === 'admin-tab'){
     state.adminTab = el.dataset.tab;
+    state.selectedIds = [];
+    if(el.dataset.tab === 'entries'){
+      await loadEntries(state.entriesManageDate);
+      state.lastSynced = new Date();
+    }
     render();
   }
   else if(action === 'excel-cancel'){
@@ -1564,6 +1671,9 @@ async function pollTick(){
       syncAdminDraftInputs();
       await loadVehicles();
       await loadFarms(state.farmDate);
+      if(state.adminTab === 'entries'){
+        await loadEntries(state.entriesManageDate);
+      }
     }
 
     const after = JSON.stringify({ v: state.vehicles, f: state.farms, e: state.entries, c: state.closed });
