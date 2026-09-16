@@ -157,7 +157,7 @@ const state = {
   vehicleDraft: { number: '', code: '' },
   formErrors: {},
   lastSynced: null,
-  closed: false,
+  closedByLine: { '1라인': false, '2라인': false },
   workerLineTab: '1라인',
   inspectorLineTab: '1라인',
   selectMode: false,
@@ -386,7 +386,11 @@ async function saveEntries(date, entries){
   await storageSet('entries:' + date, entries, true);
 }
 async function loadClosed(date){
-  state.closed = await storageGet('closed:' + date, true, false);
+  const raw = await storageGet('closed:' + date, true, null);
+  state.closedByLine = {
+    '1라인': !!(raw && raw['1라인']),
+    '2라인': !!(raw && raw['2라인'])
+  };
 }
 async function saveClosed(date, value){
   return await storageSet('closed:' + date, value, true);
@@ -532,7 +536,8 @@ function orderSelectOptionsHtml(line, excludeEntryId, currentValue){
 function renderLineColumn(line){
   const entries = sortEntriesForDisplay(line);
   const isAdminEntries = (state.role === 'admin' && state.adminTab === 'entries');
-  const locked = (state.closed || state.role === 'monitor') && !isAdminEntries;
+  const lineClosed = !!state.closedByLine[line];
+  const locked = (lineClosed || state.role === 'monitor') && !isAdminEntries;
   const selectMode = state.selectMode || isAdminEntries;
   const rows = entries.map(e => h`
     <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${e.inspected ? '' : `style="background:${farmColor(e.farmName)};"`} ${selectMode ? `data-action="toggle-select" data-id="${e.id}"` : (locked ? '' : `data-action="open-confirm" data-id="${e.id}"`)}>
@@ -559,10 +564,27 @@ function renderLineColumn(line){
             : `<button class="wm-add-btn" data-action="new-entry" data-line="${line}">차량등록</button>`)}
         </div>
       </div>
+      ${!isAdminEntries ? renderLineCloseBar(line, lineClosed, state.role !== 'monitor') : ''}
       ${selectMode ? renderSelectControls(line, !isAdminEntries) : ''}
       <div class="wm-col-body">
         ${rows || `<div class="empty" style="padding:20px 10px;font-size:12px;">등록된 차량이 없습니다.</div>`}
       </div>
+    </div>
+  `;
+}
+
+function renderLineCloseBar(line, closed, interactive){
+  const label = closed ? `${line} 마감 완료` : `${line} 투입 마감`;
+  if(!interactive){
+    return h`
+      <div style="padding:8px 10px;border-bottom:1px solid var(--border);">
+        <div style="text-align:center;padding:8px 0;border-radius:8px;font-weight:700;font-size:13px;background:${closed ? 'var(--green-bg)' : 'var(--bg)'};color:${closed ? 'var(--green)' : 'var(--text-sub)'};">${label}</div>
+      </div>
+    `;
+  }
+  return h`
+    <div style="padding:8px 10px;border-bottom:1px solid var(--border);">
+      <button class="btn-box" style="width:100%;${closed ? 'background:var(--green-bg);color:var(--green);border-color:var(--green);' : ''}" data-action="${closed ? 'reopen-line' : 'close-line'}" data-line="${line}">${label}</button>
     </div>
   `;
 }
@@ -591,11 +613,7 @@ function viewWorkerMain(){
       <div style="display:flex;align-items:center;gap:6px;">
         <input class="input" type="date" id="worker-date" value="${esc(state.date)}" style="min-height:32px;padding:0 6px;width:126px;font-size:13px;">
         <button class="btn-box" data-action="worker-refresh">새로고침</button>
-        ${isMonitor
-          ? `<span class="role-pill">모니터링(보기 전용)</span>`
-          : state.closed
-            ? `<button class="btn-box" style="background:var(--green-bg);color:var(--green);border-color:var(--green);" data-action="reopen-day">마감 완료</button>`
-            : `<button class="btn-box" data-action="close-day">투입 마감</button>`}
+        ${isMonitor ? `<span class="role-pill">모니터링(보기 전용)</span>` : ''}
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <button class="btn-ghost" data-action="logout">로그아웃</button>
@@ -1156,31 +1174,35 @@ async function onAction(ev){
     state.lastSynced = new Date();
     render();
   }
-  else if(action === 'close-day'){
+  else if(action === 'close-line'){
     if(state.role === 'monitor') return;
-    if(!confirm(`${state.date} 입고 작업을 마감하시겠습니까?\n마감 후에는 등록/수정이 불가능합니다.`)) return;
-    const ok = await saveClosed(state.date, true);
+    const line = el.dataset.line;
+    if(!confirm(`${state.date} ${line} 입고 작업을 마감하시겠습니까?\n마감 후에는 등록/수정이 불가능합니다.`)) return;
+    const newClosed = { ...state.closedByLine, [line]: true };
+    const ok = await saveClosed(state.date, newClosed);
     if(ok){
-      state.closed = true;
+      state.closedByLine = newClosed;
       render();
     } else {
       alert('마감 처리에 실패했습니다. 인터넷 연결을 확인해주세요.');
     }
   }
-  else if(action === 'reopen-day'){
+  else if(action === 'reopen-line'){
     if(state.role === 'monitor') return;
-    if(!confirm('마감을 해지하시겠습니까?')) return;
-    const ok = await saveClosed(state.date, false);
+    const line = el.dataset.line;
+    if(!confirm(`${line} 마감을 해지하시겠습니까?`)) return;
+    const newClosed = { ...state.closedByLine, [line]: false };
+    const ok = await saveClosed(state.date, newClosed);
     if(ok){
-      state.closed = false;
+      state.closedByLine = newClosed;
       render();
     } else {
       alert('처리에 실패했습니다. 인터넷 연결을 확인해주세요.');
     }
   }
   else if(action === 'new-entry'){
-    if(state.closed || state.role === 'monitor') return;
     const line = el.dataset.line || '2라인';
+    if(state.closedByLine[line] || state.role === 'monitor') return;
     await loadVehicles();
     await loadFarms(state.date);
     state.lastSynced = new Date();
@@ -1224,11 +1246,12 @@ async function onAction(ev){
     await handleSaveEntry();
   }
   else if(action === 'open-confirm'){
-    if(state.closed || state.role === 'monitor') return;
+    if(state.role === 'monitor') return;
     const id = el.dataset.id;
     if(!id) return;
     const e = state.entries.find(x => x.id === id);
     if(!e) return;
+    if(state.closedByLine[e.line]) return;
     state.confirmEntryId = id;
     state.view = 'confirmInject';
     render();
@@ -1248,8 +1271,9 @@ async function onAction(ev){
     }
   }
   else if(action === 'do-confirm'){
-    if(state.closed || state.role === 'monitor') return;
+    if(state.role === 'monitor') return;
     const e = state.entries.find(x => x.id === state.confirmEntryId);
+    if(state.closedByLine[e.line]) return;
     const sel = document.getElementById('confirm-order');
     let { injectOrder, waitState } = parseOrderValue(sel.value);
 
@@ -1569,12 +1593,12 @@ function getOrderOptions(line, excludeEntryId){
 }
 
 async function handleSaveEntry(){
-  if(state.closed){
-    alert('마감된 날짜입니다. 등록할 수 없습니다.');
+  const ne = state.newEntry;
+  if(state.closedByLine[ne.line]){
+    alert('마감된 라인입니다. 등록할 수 없습니다.');
     return;
   }
   if(state.role === 'monitor') return;
-  const ne = state.newEntry;
   const errs = {};
 
   let vehicleCode, vehicleNumber;
@@ -1672,7 +1696,7 @@ async function pollTick(){
 
   polling = true;
   try{
-    const before = JSON.stringify({ v: state.vehicles, f: state.farms, e: state.entries, c: state.closed });
+    const before = JSON.stringify({ v: state.vehicles, f: state.farms, e: state.entries, c: state.closedByLine });
 
     if(state.view === 'workerMain'){
       await loadVehicles();
@@ -1690,7 +1714,7 @@ async function pollTick(){
       }
     }
 
-    const after = JSON.stringify({ v: state.vehicles, f: state.farms, e: state.entries, c: state.closed });
+    const after = JSON.stringify({ v: state.vehicles, f: state.farms, e: state.entries, c: state.closedByLine });
     state.lastSynced = new Date();
     if(after !== before){
       render();
@@ -1704,6 +1728,42 @@ async function pollTick(){
 }
 
 setInterval(pollTick, POLL_MS);
+
+let authRestoreAttempted = false;
+firebase.auth().onAuthStateChanged(async (user) => {
+  if(authRestoreAttempted) return;
+  authRestoreAttempted = true;
+  if(!user || state.role) return;
+  try{
+    const snap = await db.ref('roles/' + user.uid).once('value');
+    const data = snap.val();
+    if(!data || !data.role) return;
+
+    state.role = data.role;
+    if(state.role === 'worker' || state.role === 'monitor'){
+      await loadVehicles();
+      await loadFarms(state.date);
+      await loadEntries(state.date);
+      await loadClosed(state.date);
+      state.view = 'workerMain';
+    } else if(state.role === 'inspector'){
+      await loadEntries(state.date);
+      state.view = 'inspectorMain';
+    } else if(state.role === 'admin'){
+      await loadVehicles();
+      await loadFarms(state.farmDate);
+      state.view = 'adminMain';
+    } else {
+      state.role = null;
+      return;
+    }
+    state.lastSynced = new Date();
+    render();
+    pollTick();
+  }catch(e){
+    console.error('auto-login restore error', e);
+  }
+});
 
 render();
 </script>
