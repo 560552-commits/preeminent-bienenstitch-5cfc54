@@ -175,6 +175,10 @@ function tomorrowStr(){
   d.setDate(d.getDate()+1);
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+function scrollToBottom(){
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
 function fmtWeight(w){
   return (w === null || w === undefined || w === '') ? null : Number(w).toFixed(2);
 }
@@ -287,6 +291,8 @@ function parseDispatchSheet(rows){
         chickenType,
         avgWeight: (weight !== null && weight !== undefined && weight !== '') ? parseFloat(weight) : null,
         targetCount: (count !== null && count !== undefined && count !== '') ? parseInt(count, 10) : null,
+        transportRoute: (cell(i, 7) !== null && cell(i, 7) !== undefined && cell(i, 7) !== '') ? String(cell(i, 7)).trim() : null,
+        workTime: (cell(i, 11) !== null && cell(i, 11) !== undefined && cell(i, 11) !== '') ? String(cell(i, 11)).trim() : null,
         vehicles: []
       };
       farmsByName[nameStr] = farm;
@@ -548,6 +554,7 @@ function renderLineColumn(line){
       </div>
       <div class="farm-col">
         <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : fmtWeight(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
+        ${(e.transportRoute || e.workTime) ? `<div style="font-size:11px;font-weight:700;color:var(--blue-dark);background:var(--blue-bg);border-radius:5px;padding:2px 6px;margin-top:3px;display:inline-block;">${e.transportRoute ? '구간' + esc(e.transportRoute) : ''}${(e.transportRoute && e.workTime) ? ' · ' : ''}${e.workTime ? '작업' + esc(e.workTime) : ''}</div>` : ''}
       </div>
     </div>
   `).join('');
@@ -1293,6 +1300,7 @@ async function onAction(ev){
     state.lastSynced = new Date();
     state.view = 'workerMain';
     render();
+    scrollToBottom();
   }
   else if(action === 'admin-tab'){
     state.adminTab = el.dataset.tab;
@@ -1334,7 +1342,7 @@ async function onAction(ev){
         avgWeight: f.avgWeight
       });
 
-      f.vehicles.forEach(v => {
+      f.vehicles.forEach((v, idx) => {
         if(!state.vehicles[v.number]){
           state.vehicles[v.number] = v.code;
         }
@@ -1351,6 +1359,8 @@ async function onAction(ev){
           chickenType: f.chickenType,
           animalWelfare: f.animalWelfare,
           weight: f.avgWeight,
+          transportRoute: idx === 0 ? f.transportRoute : null,
+          workTime: idx === 0 ? f.workTime : null,
           status: '대기',
           injectOrder: null,
           waitState: '가입력',
@@ -1667,6 +1677,7 @@ async function handleSaveEntry(){
   state.lastSynced = new Date();
   state.view = 'workerMain';
   render();
+  scrollToBottom();
 }
 
 function syncAdminDraftInputs(){
