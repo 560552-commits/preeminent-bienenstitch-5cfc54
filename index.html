@@ -176,7 +176,10 @@ function tomorrowStr(){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 function scrollToBottom(){
-  window.scrollTo(0, document.body.scrollHeight);
+  requestAnimationFrame(() => {
+    const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    window.scrollTo(0, h);
+  });
 }
 
 function fmtWeight(w){
@@ -960,6 +963,7 @@ function renderExcelPreview(imp){
       <div class="entry-main">
         <div class="v">${esc(f.name)} <span class="sub">(${esc(f.line)})</span></div>
         <div class="f">${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)} · ${esc(f.chickenType)} · ${f.avgWeight !== null ? fmtWeight(f.avgWeight) + 'kg' : '평체 미확인'} · 차량 ${f.vehicles.length}대${mismatch ? ` <span style="color:var(--danger);font-weight:700;">(신고 ${f.targetCount}대와 다름)</span>` : ''}</div>
+        <div class="sub" style="margin-top:2px;">구간: ${f.transportRoute !== null ? esc(f.transportRoute) : '<span style="color:var(--danger);">인식 안 됨</span>'} · 작업시간: ${f.workTime !== null ? esc(f.workTime) : '<span style="color:var(--danger);">인식 안 됨</span>'}</div>
       </div>
     </div>
   `;
