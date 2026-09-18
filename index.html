@@ -428,6 +428,8 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
+const APP_VERSION = 'v14';
+
 function viewLogin(){
   return h`
     <div class="header-block" style="margin-top:40px;text-align:center;">
@@ -440,6 +442,7 @@ function viewLogin(){
       <button class="btn" data-action="role-open" data-role="admin">관리자로 접속</button>
       <button class="btn" data-action="monitor-login">모니터링으로 접속 (보기 전용)</button>
     </div>
+    <p class="sub" style="text-align:center;margin-top:24px;font-size:11px;">버전 ${APP_VERSION}</p>
     ${state.loginRole ? `
       <div id="role-login-box" style="margin-top:16px;" class="card">
         <div style="padding:16px;">
