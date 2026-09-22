@@ -108,6 +108,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
+const URL_MODE = new URLSearchParams(window.location.search).get('mode');
+
 const ROLE_CODES = {
   worker: '1111',
   inspector: '2222',
@@ -481,7 +483,7 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 
 function viewLogin(){
   return h`
@@ -490,10 +492,10 @@ function viewLogin(){
       <p class="sub">한강식품 생산1팀</p>
     </div>
     <div class="stack">
-      <button class="btn btn-primary" data-action="worker-login-direct">작업자로 접속</button>
-      <button class="btn" data-action="role-open" data-role="inspector">검사관으로 접속</button>
-      <button class="btn" data-action="role-open" data-role="admin">관리자로 접속</button>
-      <button class="btn" data-action="monitor-login">모니터링으로 접속 (보기 전용)</button>
+      ${(!URL_MODE || URL_MODE === 'worker') ? `<button class="btn btn-primary" data-action="worker-login-direct">작업자로 접속</button>` : ''}
+      ${(!URL_MODE || URL_MODE === 'inspector') ? `<button class="btn" data-action="role-open" data-role="inspector">검사관으로 접속</button>` : ''}
+      ${(!URL_MODE) ? `<button class="btn" data-action="role-open" data-role="admin">관리자로 접속</button>` : ''}
+      ${(!URL_MODE || URL_MODE === 'monitor') ? `<button class="btn" data-action="monitor-login">모니터링으로 접속 (보기 전용)</button>` : ''}
     </div>
     <p class="sub" style="text-align:center;margin-top:24px;font-size:11px;">버전 ${APP_VERSION}</p>
     ${state.loginRole ? `
@@ -1826,7 +1828,6 @@ async function pollTick(){
 setInterval(pollTick, POLL_MS);
 
 let authRestoreAttempted = false;
-const urlModeParam = new URLSearchParams(window.location.search).get('mode');
 
 firebase.auth().onAuthStateChanged(async (user) => {
   if(authRestoreAttempted) return;
@@ -1861,15 +1862,15 @@ firebase.auth().onAuthStateChanged(async (user) => {
     }
   }
 
-  if(!state.role && urlModeParam === 'worker'){
+  if(!state.role && URL_MODE === 'worker'){
     await doWorkerDirectLogin();
     return;
   }
-  if(!state.role && urlModeParam === 'monitor'){
+  if(!state.role && URL_MODE === 'monitor'){
     await doMonitorLogin();
     return;
   }
-  if(!state.role && urlModeParam === 'inspector'){
+  if(!state.role && URL_MODE === 'inspector'){
     state.loginRole = 'inspector';
   }
 
