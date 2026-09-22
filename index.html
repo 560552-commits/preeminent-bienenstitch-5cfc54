@@ -483,7 +483,7 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 
 function viewLogin(){
   return h`
@@ -610,9 +610,9 @@ function renderLineColumn(line){
     <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${e.inspected ? '' : `style="background:${farmColor(e.farmName)};"`} ${selectMode ? `data-action="toggle-select" data-id="${e.id}"` : (locked ? '' : `data-action="open-confirm" data-id="${e.id}"`)}>
       ${selectMode ? `<input type="checkbox" style="pointer-events:none;width:18px;height:18px;flex-shrink:0;" ${state.selectedIds.includes(e.id) ? 'checked' : ''}>` : ''}
       ${orderBadge(e)}
-      <div class="entry-main">
+      <div class="entry-main" style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;">
         ${vehicleBlock(e)}
-        ${e.inspected ? `<span style="color:#1a56c4;font-weight:700;font-size:11px;margin-left:4px;">검사완료</span>` : ''}
+        ${e.inspected ? `<span style="color:#1a56c4;font-weight:700;font-size:11px;white-space:nowrap;">검사완료</span>` : ''}
       </div>
       <div class="farm-col">
         <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : fmtWeight(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
@@ -706,9 +706,9 @@ function renderInspectorColumn(line){
   const rows = entries.map(e => h`
     <div class="entry-row-mini ${e.inspected ? 'row-inspected' : ''}" ${e.inspected ? '' : `style="background:${farmColor(e.farmName)};"`}>
       <input type="checkbox" class="insp-checkbox" data-id="${e.id}" ${e.inspected ? 'checked' : ''}>
-      <div class="entry-main">
+      <div class="entry-main" style="display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;">
         ${vehicleBlock(e)}
-        ${e.inspected ? `<span style="color:#1a56c4;font-weight:700;font-size:11px;margin-left:4px;">검사완료</span>` : ''}
+        ${e.inspected ? `<span style="color:#1a56c4;font-weight:700;font-size:11px;white-space:nowrap;">검사완료</span>` : ''}
       </div>
       <div class="farm-col">
         <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : fmtWeight(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
