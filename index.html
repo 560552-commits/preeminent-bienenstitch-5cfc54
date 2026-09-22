@@ -182,6 +182,17 @@ function scrollToBottom(){
   });
 }
 
+function scrollToEntry(id){
+  requestAnimationFrame(() => {
+    const el = document.querySelector('.entry-row-mini[data-id="' + id + '"]');
+    if(el){
+      el.scrollIntoView({ block: 'center' });
+    } else {
+      scrollToBottom();
+    }
+  });
+}
+
 function formatWorkTime(raw){
   if(raw === null || raw === undefined || raw === '') return null;
   const s = String(raw).trim();
@@ -470,7 +481,7 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
-const APP_VERSION = 'v16';
+const APP_VERSION = 'v18';
 
 function viewLogin(){
   return h`
@@ -1352,7 +1363,7 @@ async function onAction(ev){
     state.lastSynced = new Date();
     state.view = 'workerMain';
     render();
-    scrollToBottom();
+    scrollToEntry(e.id);
   }
   else if(action === 'admin-tab'){
     state.adminTab = el.dataset.tab;
@@ -1815,6 +1826,8 @@ async function pollTick(){
 setInterval(pollTick, POLL_MS);
 
 let authRestoreAttempted = false;
+const urlModeParam = new URLSearchParams(window.location.search).get('mode');
+
 firebase.auth().onAuthStateChanged(async (user) => {
   if(authRestoreAttempted) return;
   authRestoreAttempted = true;
@@ -1848,8 +1861,24 @@ firebase.auth().onAuthStateChanged(async (user) => {
     }
   }
 
+  if(!state.role && urlModeParam === 'worker'){
+    await doWorkerDirectLogin();
+    return;
+  }
+  if(!state.role && urlModeParam === 'monitor'){
+    await doMonitorLogin();
+    return;
+  }
+  if(!state.role && urlModeParam === 'inspector'){
+    state.loginRole = 'inspector';
+  }
+
   render();
   if(state.role) pollTick();
+  if(!state.role && state.loginRole){
+    const inp = document.getElementById('role-code');
+    if(inp) inp.focus();
+  }
 });
 </script>
 </body>
