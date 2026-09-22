@@ -483,7 +483,7 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 
 function viewLogin(){
   return h`
@@ -707,6 +707,7 @@ function renderInspectorColumn(line){
       <input type="checkbox" class="insp-checkbox" data-id="${e.id}" ${e.inspected ? 'checked' : ''}>
       <div class="entry-main">
         ${vehicleBlock(e)}
+        ${e.inspected ? `<span style="color:#1a56c4;font-weight:700;font-size:11px;margin-left:4px;">검사완료</span>` : ''}
       </div>
       <div class="farm-col">
         <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : fmtWeight(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
@@ -1205,7 +1206,10 @@ async function onAction(ev){
     const body = document.querySelector(`.wm-col-body[data-line="${line}"]`);
     if(!body) return;
     const checked = Array.from(body.querySelectorAll('.insp-checkbox:checked')).map(cb => cb.dataset.id);
-    if(checked.length === 0) return;
+    if(checked.length === 0){
+      alert('체크된 차량이 없습니다.');
+      return;
+    }
     checked.forEach(id => {
       const e = state.entries.find(x => x.id === id);
       if(e) e.inspected = true;
@@ -1213,6 +1217,7 @@ async function onAction(ev){
     await saveEntries(state.date, state.entries);
     state.lastSynced = new Date();
     render();
+    alert('저장되었습니다.');
   }
   else if(action === 'inspect-cancel'){
     if(state.role !== 'inspector') return;
@@ -1220,7 +1225,10 @@ async function onAction(ev){
     const body = document.querySelector(`.wm-col-body[data-line="${line}"]`);
     if(!body) return;
     const checked = Array.from(body.querySelectorAll('.insp-checkbox:checked')).map(cb => cb.dataset.id);
-    if(checked.length === 0) return;
+    if(checked.length === 0){
+      alert('체크된 차량이 없습니다.');
+      return;
+    }
     checked.forEach(id => {
       const e = state.entries.find(x => x.id === id);
       if(e) e.inspected = false;
@@ -1228,6 +1236,7 @@ async function onAction(ev){
     await saveEntries(state.date, state.entries);
     state.lastSynced = new Date();
     render();
+    alert('저장되었습니다.');
   }
   else if(action === 'worker-refresh'){
     const dateInput = document.getElementById('worker-date');
