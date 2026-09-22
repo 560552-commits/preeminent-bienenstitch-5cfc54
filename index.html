@@ -483,7 +483,7 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v22';
 
 function viewLogin(){
   return h`
@@ -612,6 +612,7 @@ function renderLineColumn(line){
       ${orderBadge(e)}
       <div class="entry-main">
         ${vehicleBlock(e)}
+        ${e.inspected ? `<span style="color:#1a56c4;font-weight:700;font-size:11px;margin-left:4px;">검사완료</span>` : ''}
       </div>
       <div class="farm-col">
         <div class="farm-inline">${premiumSpan(e.premium, e.animalWelfare)}${premiumSpan(e.premium, e.animalWelfare) ? ' ' : ''}${esc(e.farmName)} ${e.weight === null ? '중량 입력대기' : fmtWeight(e.weight) + 'kg'}${chickenTag(e.chickenType) ? '·' + esc(chickenTag(e.chickenType)) : ''}</div>
@@ -1842,6 +1843,22 @@ firebase.auth().onAuthStateChanged(async (user) => {
   if(authRestoreAttempted) return;
   authRestoreAttempted = true;
 
+  if(URL_MODE === 'worker'){
+    await doWorkerDirectLogin();
+    return;
+  }
+  if(URL_MODE === 'monitor'){
+    await doMonitorLogin();
+    return;
+  }
+  if(URL_MODE === 'inspector'){
+    state.loginRole = 'inspector';
+    render();
+    const inp = document.getElementById('role-code');
+    if(inp) inp.focus();
+    return;
+  }
+
   if(user && !state.role){
     try{
       const snap = await db.ref('roles/' + user.uid).once('value');
@@ -1869,18 +1886,6 @@ firebase.auth().onAuthStateChanged(async (user) => {
     }catch(e){
       console.error('auto-login restore error', e);
     }
-  }
-
-  if(!state.role && URL_MODE === 'worker'){
-    await doWorkerDirectLogin();
-    return;
-  }
-  if(!state.role && URL_MODE === 'monitor'){
-    await doMonitorLogin();
-    return;
-  }
-  if(!state.role && URL_MODE === 'inspector'){
-    state.loginRole = 'inspector';
   }
 
   render();
