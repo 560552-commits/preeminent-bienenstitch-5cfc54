@@ -151,6 +151,7 @@ const state = {
   loginRole: null,
   newEntry: null,
   confirmEntryId: null,
+  confirmFarmEdit: null,
   confirmValue: '',
   adminTab: 'farms',
   excelImport: null,
@@ -483,7 +484,7 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
-const APP_VERSION = 'v23';
+const APP_VERSION = 'v24';
 
 function viewLogin(){
   return h`
@@ -855,6 +856,7 @@ function viewEntryForm(){
 function viewConfirmInject(){
   const e = state.entries.find(x => x.id === state.confirmEntryId);
   if(!e) return `<p>항목을 찾을 수 없습니다.</p>`;
+  const fe = state.confirmFarmEdit;
   return h`
     <div class="backbar">
       <button class="backbtn" data-action="cancel-confirm">←</button>
@@ -862,7 +864,42 @@ function viewConfirmInject(){
     </div>
     <div class="card" style="padding:16px;margin-bottom:18px;">
       <p style="font-weight:600;font-size:15px;">${esc(e.vehicleCode)} · ${esc(e.vehicleNumber)}</p>
-      <p class="sub" style="margin-top:4px;">${esc(e.farmName)}${e.premium ? ' · ' + premiumSpan(e.premium, e.animalWelfare) : ''}${e.weight !== null ? ' · ' + fmtWeight(e.weight) + 'kg' : ' · 중량 입력대기'}</p>
+      <p class="sub" style="margin-top:4px;">현재 농가: ${esc(e.farmName)}${e.premium ? ' · ' + premiumSpan(e.premium, e.animalWelfare) : ''}${e.weight !== null ? ' · ' + fmtWeight(e.weight) + 'kg' : ' · 중량 입력대기'}</p>
+    </div>
+
+    <div class="field">
+      <span class="label">농가 변경 (${esc(state.date)} 등록 목록)</span>
+      ${fe.farmMode === 'list' ? `
+        <select class="input" id="confirm-farm-select" data-change="confirm-farm-select">
+          <option value="">선택하세요</option>
+          ${state.farms.map(f => `<option value="${f.id}" ${fe.farmId===f.id?'selected':''}>${esc(f.name)}</option>`).join('')}
+          <option value="__manual__">목록에 없음 - 직접 입력</option>
+        </select>
+        ${fe.farmId ? (() => {
+          const f = state.farms.find(x => x.id === fe.farmId);
+          return f ? `<div class="readonly-box" style="margin-top:8px;">프리미엄: <strong>${premiumSpan(f.premium, f.animalWelfare) || esc(f.premium)}</strong>${f.chickenType ? ' · <strong>' + esc(f.chickenType) + '</strong>' : ''}${(f.avgWeight !== undefined && f.avgWeight !== null) ? ' · <strong>' + fmtWeight(f.avgWeight) + 'kg</strong>' : ''} (자동)</div>` : '';
+        })() : ''}
+      ` : `
+        <div class="stack">
+          <input class="input" type="text" id="confirm-farm-name" value="${esc(fe.farmNameManual)}" placeholder="농가명 직접 입력">
+          <select class="input" id="confirm-farm-premium">
+            <option value="G마크" ${fe.premiumManual==='G마크'?'selected':''}>G마크</option>
+            <option value="무항생제" ${fe.premiumManual==='무항생제'?'selected':''}>무항생제</option>
+            <option value="일반" ${fe.premiumManual==='일반'?'selected':''}>일반</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 2px;">
+            <input type="checkbox" id="confirm-farm-welfare" style="width:18px;height:18px;" ${fe.animalWelfareManual ? 'checked' : ''}>
+            동물복지 인증 함께 보유
+          </label>
+          <select class="input" id="confirm-farm-chicken">
+            <option value="육계" ${fe.chickenTypeManual==='육계'?'selected':''}>육계</option>
+            <option value="삼계" ${fe.chickenTypeManual==='삼계'?'selected':''}>삼계</option>
+          </select>
+          <input class="input" type="text" inputmode="decimal" id="confirm-farm-weight" placeholder="평체 (kg) 예: 1.85" value="${esc(fe.avgWeightManual)}">
+          ${state.farms.length ? `<button class="btn-ghost" type="button" data-action="confirm-farm-back-list">← 목록에서 선택</button>` : ''}
+        </div>
+      `}
+      <p class="fixed-note">농가를 바꾸면 이 차량은 새 농가의 가장 마지막 순번으로 이동합니다.</p>
     </div>
 
     <div class="field">
@@ -1107,6 +1144,15 @@ async function onChange(ev){
     }
     render();
   }
+  else if(action === 'confirm-farm-select'){
+    if(el.value === '__manual__'){
+      state.confirmFarmEdit.farmMode = 'manual';
+      state.confirmFarmEdit.farmId = null;
+    } else {
+      state.confirmFarmEdit.farmId = el.value;
+    }
+    render();
+  }
 }
 
 async function onAction(ev){
@@ -1323,6 +1369,12 @@ async function onAction(ev){
     state.newEntry.farmId = null;
     render();
   }
+  else if(action === 'confirm-farm-back-list'){
+    syncConfirmFarmInputs();
+    state.confirmFarmEdit.farmMode = 'list';
+    state.confirmFarmEdit.farmId = null;
+    render();
+  }
   else if(action === 'save-entry'){
     syncEntryFormInputs();
     await handleSaveEntry();
@@ -1335,6 +1387,24 @@ async function onAction(ev){
     if(!e) return;
     if(state.closedByLine[e.line]) return;
     state.confirmEntryId = id;
+    const matchedFarm = state.farms.find(f => f.name === e.farmName);
+    state.confirmFarmEdit = matchedFarm ? {
+      farmMode: 'list',
+      farmId: matchedFarm.id,
+      farmNameManual: '',
+      premiumManual: 'G마크',
+      animalWelfareManual: false,
+      chickenTypeManual: '육계',
+      avgWeightManual: ''
+    } : {
+      farmMode: 'manual',
+      farmId: null,
+      farmNameManual: e.farmName,
+      premiumManual: e.premium || 'G마크',
+      animalWelfareManual: !!e.animalWelfare,
+      chickenTypeManual: e.chickenType || '육계',
+      avgWeightManual: e.weight !== null ? String(e.weight) : ''
+    };
     state.view = 'confirmInject';
     render();
   }
@@ -1356,6 +1426,34 @@ async function onAction(ev){
     if(state.role === 'monitor') return;
     const e = state.entries.find(x => x.id === state.confirmEntryId);
     if(state.closedByLine[e.line]) return;
+
+    syncConfirmFarmInputs();
+    const fe = state.confirmFarmEdit;
+    let newFarmName = e.farmName, newPremium = e.premium, newChickenType = e.chickenType, newAnimalWelfare = e.animalWelfare, newWeight = e.weight;
+    let farmErr = '';
+    if(fe.farmMode === 'list'){
+      const f = state.farms.find(x => x.id === fe.farmId);
+      if(!f){
+        farmErr = '농가를 선택하거나 직접 입력해주세요.';
+      } else {
+        newFarmName = f.name; newPremium = f.premium; newChickenType = f.chickenType || ''; newAnimalWelfare = !!f.animalWelfare;
+        newWeight = (f.avgWeight === undefined || f.avgWeight === null) ? null : f.avgWeight;
+      }
+    } else {
+      if(!fe.farmNameManual || !fe.farmNameManual.trim()){
+        farmErr = '농가명을 입력해주세요.';
+      } else if(!fe.avgWeightManual || isNaN(parseFloat(fe.avgWeightManual))){
+        farmErr = '평체를 숫자로 입력해주세요.';
+      } else {
+        newFarmName = fe.farmNameManual.trim(); newPremium = fe.premiumManual; newChickenType = fe.chickenTypeManual; newAnimalWelfare = !!fe.animalWelfareManual;
+        newWeight = parseFloat(fe.avgWeightManual);
+      }
+    }
+    if(farmErr){
+      alert(farmErr);
+      return;
+    }
+
     const sel = document.getElementById('confirm-order');
     let { injectOrder, waitState } = parseOrderValue(sel.value);
 
@@ -1368,9 +1466,21 @@ async function onAction(ev){
       waitState = null;
     }
 
+    const farmChanged = newFarmName !== e.farmName;
+    e.farmName = newFarmName;
+    e.premium = newPremium;
+    e.chickenType = newChickenType;
+    e.animalWelfare = newAnimalWelfare;
+    e.weight = newWeight;
     e.injectOrder = injectOrder;
     e.waitState = waitState;
     e.status = injectOrder ? '투입완료' : '대기';
+    if(farmChanged){
+      const maxSeq = state.entries
+        .filter(x => x.line === e.line && x.farmName === newFarmName && x.id !== e.id)
+        .reduce((m, x) => Math.max(m, x.seq), 0);
+      e.seq = maxSeq + 1;
+    }
     await saveEntries(state.date, state.entries);
     state.lastSynced = new Date();
     state.view = 'workerMain';
@@ -1434,8 +1544,8 @@ async function onAction(ev){
           chickenType: f.chickenType,
           animalWelfare: f.animalWelfare,
           weight: f.avgWeight,
-          transportRoute: idx === 0 ? f.transportRoute : null,
-          workTime: idx === 0 ? f.workTime : null,
+          transportRoute: idx < 3 ? f.transportRoute : null,
+          workTime: idx < 3 ? f.workTime : null,
           status: '대기',
           injectOrder: null,
           waitState: '가입력',
@@ -1648,6 +1758,21 @@ function syncEntryFormInputs(){
   if(ord) ne.order = ord.value;
   const fo = document.getElementById('ne-force-order');
   if(fo) ne.forceOrder = fo.value;
+}
+
+function syncConfirmFarmInputs(){
+  const fe = state.confirmFarmEdit;
+  if(!fe) return;
+  const fn = document.getElementById('confirm-farm-name');
+  if(fn) fe.farmNameManual = fn.value;
+  const fp = document.getElementById('confirm-farm-premium');
+  if(fp) fe.premiumManual = fp.value;
+  const faw = document.getElementById('confirm-farm-welfare');
+  if(faw) fe.animalWelfareManual = faw.checked;
+  const fc = document.getElementById('confirm-farm-chicken');
+  if(fc) fe.chickenTypeManual = fc.value;
+  const fw = document.getElementById('confirm-farm-weight');
+  if(fw) fe.avgWeightManual = fw.value.trim();
 }
 
 function sortedVehicleCodes(){
