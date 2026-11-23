@@ -223,8 +223,11 @@ function dateToStr(d){
 async function handleExcelFile(file){
   try{
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
-    const sheetName = wb.SheetNames.find(n => n.trim() === '배차') || wb.SheetNames[0];
+    const wb = XLSX.read(buf, { type: 'array', cellStyles: true });
+    // 시트명이 '배차'와 정확히 같으면 우선, 없으면 '배차'가 들어간 시트(배차2, 배차~~ 등), 그래도 없으면 첫 시트
+    const sheetName = wb.SheetNames.find(n => n.replace(/\s/g, '') === '배차')
+      || wb.SheetNames.find(n => n.replace(/\s/g, '').includes('배차'))
+      || wb.SheetNames[0];
     const ws = wb.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
@@ -247,7 +250,9 @@ async function handleExcelFile(file){
       date: parsed.detectedDate
         ? `${parsed.detectedDate.y}-${String(parsed.detectedDate.m).padStart(2,'0')}-${String(parsed.detectedDate.d).padStart(2,'0')}`
         : state.farmDate,
-      farms: parsed.farms
+      farms: parsed.farms,
+      declaredTotal: parsed.declaredTotal,
+      excludedNos: parsed.excludedNos
     };
     render();
   }catch(e){
@@ -309,6 +314,50 @@ function parseDispatchSheet(rows){
     }
   }
 
+  // ── 총 차량대수 인식 ──
+  // 1순위: 표 아래 합계줄(A열이 '자 사'/'합계' 같은 글자, G열 차량대수 숫자)
+  // 2순위: 표 위쪽에 적힌 "총 77대" / "차량대수 77" 같은 값
+  // 3순위: 각 농가 차량대수(G열) 합계
+  let declaredTotal = null;
+  for(let r = dataStart; r < rows.length; r++){
+    const a = cell(r, 0);
+    const g = cell(r, 6);
+    if(typeof a === 'string' && a.trim() && isNaN(parseInt(a, 10)) && g !== null && g !== ''){
+      const k = parseInt(g, 10);
+      if(!isNaN(k) && k > 0){ declaredTotal = k; break; }
+    }
+  }
+  for(let r = 0; r < headerIdx && declaredTotal === null; r++){
+    const row = rows[r];
+    if(!row) continue;
+    for(let c = 0; c < row.length; c++){
+      const v = row[c];
+      if(typeof v !== 'string') continue;
+      const m = v.match(/(?:총|차량|대수)[^\d]{0,6}(\d{1,3})\s*대/);
+      if(m){ declaredTotal = parseInt(m[1], 10); break; }
+      if(/총\s*(차량)?\s*대수|차량\s*대수\s*합|총\s*차량/.test(v)){
+        const nx = row.slice(c + 1).find(x => x !== null && x !== '' && !isNaN(parseInt(x, 10)));
+        if(nx !== undefined){ declaredTotal = parseInt(nx, 10); break; }
+      }
+    }
+  }
+  if(declaredTotal === null){
+    let sum = 0, found = false;
+    for(let r = dataStart; r < rows.length; r++){
+      const nm = cell(r, 2);
+      const nmStr = nm ? String(nm).trim() : '';
+      const cnt = cell(r, 6);
+      if(nmStr && !KNOWN_TAG_WORDS.has(nmStr) && !/합계|소계|총계/.test(nmStr) &&
+         (cell(r, 4) !== null || cnt !== null || cell(r, 8) !== null)){
+        const k = parseInt(cnt, 10);
+        if(!isNaN(k)){ sum += k; found = true; }
+      }
+    }
+    if(found && sum > 0) declaredTotal = sum;
+  }
+  const excludedNos = [];
+  let vehicleCount = 0;
+
   const farmsByName = {};
   const farmOrder = [];
   let current = null;
@@ -317,6 +366,13 @@ function parseDispatchSheet(rows){
   const n = rows.length;
 
   while(i < n){
+    // No(A열)가 총 차량대수를 넘는 줄은 통째로 제외
+    const noVal = parseInt(cell(i, 0), 10);
+    if(declaredTotal && !isNaN(noVal) && noVal > declaredTotal){
+      if(cell(i, 9) || cell(i, 10)) excludedNos.push(noVal);
+      i++;
+      continue;
+    }
     const name = cell(i, 2);
     const region = cell(i, 4);
     const count = cell(i, 6);
@@ -368,14 +424,20 @@ function parseDispatchSheet(rows){
       const code = cell(i, 9);
       const num = cell(i, 10);
       if(code && num !== null && num !== '' && num !== undefined){
-        current.vehicles.push({ code: String(code).trim(), number: String(num).trim() });
+        if(declaredTotal && vehicleCount >= declaredTotal){
+          // No가 비어 있어도 총 대수를 넘으면 강제로 제외
+          if(!isNaN(noVal)) excludedNos.push(noVal); else excludedNos.push('?');
+        } else {
+          current.vehicles.push({ code: String(code).trim(), number: String(num).trim() });
+          vehicleCount++;
+        }
       }
     }
 
     i++;
   }
 
-  return { detectedDate, farms: farmOrder };
+  return { detectedDate, farms: farmOrder, declaredTotal, excludedNos };
 }
 function formatDateKorean(dateStr){
   const parts = dateStr.split('-').map(Number);
@@ -484,7 +546,7 @@ function roleLabel(role){
   return role === 'worker' ? '작업자' : role === 'inspector' ? '검사관' : role === 'monitor' ? '모니터링' : '관리자';
 }
 
-const APP_VERSION = 'v24';
+const APP_VERSION = 'v26';
 
 function viewLogin(){
   return h`
@@ -1075,6 +1137,8 @@ function renderExcelPreview(imp){
     <div class="card" style="padding:16px;margin-bottom:16px;">
       <p style="font-weight:700;font-size:15px;">농가 ${imp.farms.length}곳 · 차량 ${totalVehicles}대 인식됨</p>
       <p class="sub" style="margin-top:4px;">등록되는 차량은 전부 "가입력" 상태로 들어가고, 실제 도착 시 작업자가 순서를 지정하면 됩니다.</p>
+      ${imp.declaredTotal ? `<p class="sub" style="margin-top:4px;">총 차량대수 <b>${imp.declaredTotal}대</b> 기준으로 No ${imp.declaredTotal}번까지만 반영해요.</p>` : ''}
+      ${imp.excludedNos && imp.excludedNos.length ? `<p class="error" style="margin-top:8px;">총 ${imp.declaredTotal}대를 넘는 ${imp.excludedNos.length}줄은 제외했어요 (No ${esc(imp.excludedNos.join(', '))}).</p>` : ''}
       ${mismatches.length ? `<p class="error" style="margin-top:8px;">⚠ ${mismatches.length}개 농가에서 신고된 차량대수와 인식된 대수가 달라요. 아래 목록에서 빨간 표시를 확인해주세요.</p>` : ''}
     </div>
     <span class="label">인식된 농가 목록</span>
